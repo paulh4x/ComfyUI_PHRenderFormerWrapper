@@ -2,6 +2,10 @@
 
 **Author:** paulh4x
 
+![WIP Screenshot 1](assets/img/phrenderformer_wip_00.png)
+![WIP Screenshot 2](assets/img/phrenderformer_wip_01.png)
+![Resolution Comparison](assets/img/phrenderformer_wip_res_compare.jpg)
+
 > [!WARNING]
 > **WORK IN PROGRESS:** This project is currently under active development and should be considered experimental. It will be officially released as soon as it is stable.
 
