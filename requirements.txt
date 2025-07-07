@@ -1,0 +1,16 @@
+torch==2.7.1+cu126
+torchvision
+numpy
+dacite
+einops
+roma
+huggingface_hub
+safetensors
+trimesh
+scipy
+pymeshlab
+h5py
+natsort
+imageio[ffmpeg]
+simple-ocio
+git+https://github.com/iamNCJ/renderformer-liger-kernel.git
