@@ -6,70 +6,35 @@
 ![WIP Screenshot 2](assets/img/phrenderformer_wip_01.png)
 ![Resolution Comparison](assets/img/phrenderformer_wip_res_compare.jpg)
 
-> [!WARNING]
-> **WORK IN PROGRESS:** This project is currently under active development and should be considered experimental. It will be officially released as soon as it is stable.
-
 This repository contains a set of custom nodes for ComfyUI that provide a wrapper for Microsoft's **RenderFormer** model. It allows you to render complex 3D scenes with physically-based materials and global illumination directly within the ComfyUI interface.
 
----
-
-### 🌱 My Journey
-
-This project represents my very first baby steps into the world of coding and my first-ever contribution to the open-source community. ❤️ It was born out of a desire to learn and create, fueled by late-night sessions of what can only be described as "vibecoding."
-
-What started as a simple experiment quickly grew into a passion project. It has been a journey of discovery, filled with challenges, learning, and the immense satisfaction of seeing an idea come to life. I hope this wrapper brings as much utility and fun to your projects as it has brought me in building it. Thank you for being a part of my story!
+> [!WARNING]
+> **WORK IN PROGRESS & HELLO WORLD:** This project is my first "hello world" in contributing code of any kind and is currently under active development. It should be considered experimental. I do not take responsibility if this breaks anything and do not plan to provide official support for it.
 
 ---
-
-### Version 0.2 - Refinements and Fixes
-
-This version focuses on improving the usability and stability of the nodes, with several key refinements and bug fixes.
-
-**Key Features & Accomplishments:**
-
-*   **Material Output:** The `LoadMesh` node now has a `RENDERFORMER_MATERIAL` output, allowing you to pipe the material from one mesh to another.
-*   **Default Transformations:** When loading specific background meshes from the `cbox-bunny.json` example (`plane.obj`, `wall0.obj`, `wall1.obj`, `wall2.obj`), the node now automatically applies the correct transformation values.
-*   **Increased Precision:** The precision for rotation and scale inputs has been increased for finer control over transformations.
-*   **Bug Fixes:** Resolved an out-of-memory error that could occur with high-resolution rendering or complex scenes.
-
-### Version 0.1 - Initial Development
-
-This initial version of the PHRenderFormerWrapper lays the foundation for rendering 3D scenes within ComfyUI. The focus was on establishing the core architecture, implementing a comprehensive set of nodes for scene construction, and creating a flexible, user-friendly workflow.
-
-**Key Features & Accomplishments:**
-
-*   **Core Rendering Pipeline:**
-    *   `RenderFormerModelLoader`: Loads the RenderFormer model from Hugging Face.
-    *   `RenderFormerGenerator`: The main sampler node that renders the final image from a scene.
-    *   **In-Memory Scene Processing:** The entire scene-to-HDF5 conversion process is handled in memory, patching `trimesh` and `h5py` to avoid slow disk operations and temporary files. This is a key performance and efficiency feature.
-
-*   **Modular Scene Construction:**
-    *   `LoadMesh`: Loads `.obj`, `.glb`, and other 3D files. Also acts as the central point for defining PBR materials.
-    *   `RenderFormerCamera`: Defines camera position, target, and FOV.
-    *   `RenderFormerLighting`: Creates an emissive light source with configurable properties.
-    *   `RenderFormerSceneBuilder`: Assembles all components (meshes, materials, camera, lights) into a final scene ready for rendering.
-
-*   **Advanced Node Functionality:**
-    *   `RenderFormerMeshCombine`: Allows for combining multiple `PH_MESH` objects into a single scene.
-    *   `RenderFormerLightingCombine`: Allows for combining multiple light sources.
-    *   `RemeshMesh`: Simplifies mesh geometry to a target face count using `pymeshlab`.
-    *   `RandomizeColors`: A utility node to apply a deterministic, gradient-based color pattern to a mesh's faces, useful for debugging and creative effects.
-    *   `RenderFormerFromJSON` & `LoadRenderFormerExampleScene`: Provides advanced methods for loading scenes directly from JSON definitions or the original RenderFormer example files.
-
-*   **UI/UX Enhancements:**
-    *   **File Uploader:** The `LoadMesh` node includes a convenient "choose mesh to upload" button.
-    *   **Advanced Color Picker:** The `diffuse_rgb` string input was replaced with a custom, canvas-based interactive color picker for a much better user experience.
-    *   **High-Precision Transforms:** All transform inputs (translation, rotation, scale) were given high precision for fine-grained control.
 
 ### 🚀 Features
 
 -   **🎨 End-to-End Rendering:** Load 3D models, define materials, set up cameras, and render—all within ComfyUI.
 -   **⚙️ Modular Node-Based Workflow:** Each step of the rendering pipeline is a separate node, allowing for flexible and complex setups.
+-   **🎥 Animation & Video:** Create camera animations by interpolating between keyframes. The nodes output image batches compatible with ComfyUI's native video-saving nodes.
 -   **🔧 Advanced Mesh Processing:** Includes nodes for loading, combining, remeshing, and applying simple color randomization to your 3D assets.
--   **💡 Lighting and Material Control:** Easily add default light sources and control PBR material properties like diffuse, specular, roughness, and emission.
+-   **💡 Lighting and Material Control:** Easily add and combine multiple light sources and control PBR material properties like diffuse, specular, roughness, and emission.
 -   **↔️ Full Transformation Control:** Apply translation, rotation, and scaling to objects within the scene.
+-   **⚡ In-Memory Processing:** The entire scene preparation pipeline, from loading meshes to generating the final HDF5 data for the model, is handled in-memory to maximize speed and avoid disk I/O.
+
+---
 
 ### 🛠️ Installation
+
+#### Prerequisites
+
+-   **Git:** Required for cloning the repository and installing certain dependencies.
+-   **Python:** A Python version compatible with ComfyUI and PyTorch 2.0+.
+-   **PyTorch:** A compatible version of PyTorch must be installed for your hardware (NVIDIA CUDA or Apple Metal). This wrapper is tested with PyTorch 2.7.1 and CUDA 12.6.
+-   **ComfyUI:** A working installation of ComfyUI.
+
+#### Installation Steps
 
 1.  Navigate to your ComfyUI `custom_nodes` directory:
     ```bash
@@ -77,28 +42,85 @@ This initial version of the PHRenderFormerWrapper lays the foundation for render
     ```
 2.  Clone this repository:
     ```bash
-    git clone <repository_url> ComfyUI_PHRenderFormerWrapper
+    git clone https://github.com/your-github-username/ComfyUI_PHRenderFormerWrapper.git
     ```
-3.  Install the required dependencies:
+3.  Navigate into the newly cloned directory:
     ```bash
     cd ComfyUI_PHRenderFormerWrapper
+    ```
+4.  Clone the official Microsoft RenderFormer repository into this directory. It **must** be named `renderformer`:
+    ```bash
+    git clone https://github.com/microsoft/renderformer.git renderformer
+    ```
+5.  Install the required Python packages for this wrapper:
+    ```bash
     pip install -r requirements.txt
     ```
-4.  Restart ComfyUI.
+6.  RenderFormer requires an additional plugin for handling HDR image formats. Run the following command to download it:
+    ```bash
+    python -c "import imageio; imageio.plugins.freeimage.download()"
+    ```
+7.  Restart ComfyUI.
+
+> [!NOTE]
+> For NVIDIA GPU users, the underlying RenderFormer library can optionally use **Flash Attention** for better performance. If you have it installed in your PyTorch environment, it should be used automatically.
+
+---
 
 ### 📦 Nodes
 
+This wrapper provides a comprehensive set of nodes to build 3D scenes.
+
+#### Core Pipeline
 -   **PHRenderFormer Model Loader**: Loads a specified RenderFormer model from Hugging Face or a local path.
--   **PHRenderFormer Mesh Loader**: Loads a 3D mesh file (e.g., `.obj`, `.glb`). Includes a file upload button to add models directly to your `ComfyUI/input/3d` directory.
--   **PHRenderFormer Mesh Combine**: Combines multiple meshes into a single scene object.
--   **PHRenderFormer Remesh**: Simplifies the geometry of a mesh to a target face count using `pymeshlab`.
--   **PHRenderFormer Random Colors**: Applies random vertex colors to a mesh for creative effects.
+-   **PHRenderFormer Scene Builder**: Assembles a final scene for single-image rendering from meshes, a camera, materials, and lighting.
+-   **PHRenderFormer Sampler**: Executes the RenderFormer pipeline on an assembled scene to produce the final rendered image.
+
+#### Video & Animation
+-   **PHRenderFormer Camera Target**: Creates a camera animation sequence by interpolating between a start and end camera state (position, look-at, FOV).
+-   **PHRenderFormer Video Scene Builder**: Assembles a sequence of scenes, one for each frame of a camera animation.
+-   **PHRenderFormer Video Sampler**: Renders a sequence of scenes and outputs the frames as an image batch, ready to be connected to a "Save Video" node.
+
+#### Scene Components
+-   **PHRenderFormer Mesh Loader**: Loads a 3D mesh file (e.g., `.obj`, `.glb`). Includes a file upload button and serves as the primary node for defining an object's material and transformation.
 -   **PHRenderFormer Camera**: Defines the camera's position, look-at target, and field of view (FOV).
--   **PHRenderFormer Material**: Defines the PBR material properties for a mesh. The diffuse color can be set using an interactive, canvas-based color picker within the `PHRenderFormer Mesh Loader` node.
--   **PHRenderFormer Lighting**: Controls the scene's lighting, allowing you to add and configure a default emissive light source.
--   **PHRenderFormer Scene Builder**: Assembles the final scene by combining meshes, a camera, materials, lighting, and transformations.
--   **PHRenderFormer Sampler**: Executes the RenderFormer pipeline on the assembled scene to produce the final rendered image.
--   **PHRenderFormer From JSON**: Loads a scene from a JSON definition, allowing for more complex and customized setups.
+-   **PHRenderFormer Material**: Defines the PBR material properties for a mesh. The diffuse color can be set using an interactive, canvas-based color picker.
+-   **PHRenderFormer Lighting**: Creates a configurable emissive light source.
+
+#### Utilities & Advanced
+-   **PHRenderFormer Mesh Combine**: Combines multiple `PH_MESH` outputs into a single object list.
+-   **PHRenderFormer Lighting Combine**: Combines multiple light sources into a single list for the scene builder.
+-   **PHRenderFormer Remesh**: Simplifies the geometry of a mesh to a target face count using `pymeshlab`.
+-   **PHRenderFormer Random Colors**: Applies random vertex colors to a mesh for creative effects or debugging.
+-   **PHRenderFormer From JSON**: Loads a scene from a JSON definition, allowing for more complex and customized setups based on the original RenderFormer format.
+-   **PHRenderFormer Example Scene**: A test node to quickly load one of the official RenderFormer example scenes.
+
+---
+
+### Version History
+
+#### Version 0.3 - Video Rendering and Stability
+-   **Feature:** Added a complete, dedicated workflow for video rendering (`Camera Target`, `Video Scene Builder`, `Video Sampler`).
+-   **Fix:** Resolved a `dacite.exceptions.MissingValueError` in the video scene builder.
+-   **Fix:** Addressed `TypeError` and `FileNotFoundError` bugs related to temporary file handling in the video pipeline.
+-   **Change:** Separated single-image and video workflows for improved stability and clarity.
+
+#### Version 0.2 - Refinements and Fixes
+-   **Feature:** The `LoadMesh` node now has a `RENDERFORMER_MATERIAL` output, allowing material properties to be shared.
+-   **Feature:** Added default transformations for specific background meshes from the official examples.
+-   **Change:** Increased input precision for rotation and scale transformations.
+
+#### Version 0.1 - Initial Development
+-   **Feature:** Established the core rendering pipeline and all essential nodes for building and rendering a static 3D scene.
+-   **Feature:** Implemented in-memory scene processing to patch `trimesh` and `h5py`, avoiding slow disk I/O.
+-   **Feature:** Added advanced utility nodes like `RemeshMesh`, `RandomizeColors`, and `FromJSON`.
+-   **UI/UX:** Integrated a file uploader and a custom canvas-based color picker for a better user experience.
+
+---
+
+### 🌱 My Journey
+
+This project represents my first steps into coding and open-source contribution. It was born out of a desire to learn and create. What started as a simple experiment has been a journey of discovery, and I'm excited to see where it goes. I would love to develop this project further with the help of the community and welcome any contributions or feedback.
 
 ### 🙏 Acknowledgements
 

@@ -15,7 +15,7 @@ import comfy.model_management as mm
 import folder_paths
 import imageio
 script_directory = Path(__file__).parent
-renderformer_repo_path = script_directory / "example_repos" / "renderformer"
+renderformer_repo_path = script_directory / "renderformer"
 scene_processor_path = renderformer_repo_path / "scene_processor"
 # Add both the repo root and the scene_processor directory to the path
 # This allows imports like `from renderformer...` and also allows the
@@ -31,7 +31,7 @@ try:
     from scene_mesh import generate_scene_mesh
     from to_h5 import save_to_h5 as original_save_to_h5
 except ImportError as e:
-    print(f"Could not import RenderFormer components. Error: {e}. Please ensure the repository exists in 'example_repos/renderformer' and you have installed the requirements.")
+    print(f"Could not import RenderFormer components. Error: {e}. Please ensure the repository exists in 'renderformer' and you have installed the requirements.")
 
 
 def look_at_to_c2w(camera_position, target_position, up_dir=np.array([0.0, 0.0, 1.0])):
@@ -333,6 +333,54 @@ class RenderFormerCamera:
         }
         return (camera_settings,)
 
+class PHRenderFormerCameraTarget:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "start_camera": ("RENDERFORMER_CAMERA",),
+                "end_pos_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "end_pos_y": ("FLOAT", {"default": -2.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "end_pos_z": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "end_look_at_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "end_look_at_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "end_look_at_z": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "end_fov": ("FLOAT", {"default": 37.5, "min": 1.0, "max": 179.0, "step": 1.0}),
+                "num_frames": ("INT", {"default": 24, "min": 1, "max": 1000}),
+            }
+        }
+
+    RETURN_TYPES = ("RENDERFORMER_CAMERA_SEQUENCE",)
+    FUNCTION = "get_camera_sequence"
+    CATEGORY = "PHRenderFormer"
+
+    def get_camera_sequence(self, start_camera, end_pos_x, end_pos_y, end_pos_z,
+                            end_look_at_x, end_look_at_y, end_look_at_z, end_fov, num_frames):
+        
+        start_pos = np.array(start_camera["position"])
+        end_pos = np.array([end_pos_x, end_pos_y, end_pos_z])
+        
+        start_look_at = np.array(start_camera["look_at"])
+        end_look_at = np.array([end_look_at_x, end_look_at_y, end_look_at_z])
+
+        start_fov = start_camera["fov"]
+
+        camera_sequence = []
+        for i in range(num_frames):
+            t = i / (num_frames - 1) if num_frames > 1 else 0
+            
+            interp_pos = start_pos + t * (end_pos - start_pos)
+            interp_look_at = start_look_at + t * (end_look_at - start_look_at)
+            interp_fov = start_fov + t * (end_fov - start_fov)
+
+            camera_sequence.append({
+                "position": interp_pos.tolist(),
+                "look_at": interp_look_at.tolist(),
+                "fov": interp_fov
+            })
+            
+        return (camera_sequence,)
+
 class RenderFormerLighting:
     @classmethod
     def INPUT_TYPES(cls):
@@ -527,7 +575,7 @@ class RenderFormerSceneBuilder:
                 json.dump(config_data, f)
 
             # Copy template files if needed
-            template_mesh_root = Path(__file__).parent / "example_repos" / "renderformer" / "examples"
+            template_mesh_root = Path(__file__).parent / "renderformer" / "examples"
             # Copy light mesh if any lights are present
             if lighting and isinstance(lighting, list) and len(lighting) > 0:
                 light_mesh_path = template_mesh_root / "templates" / "lighting" / "tri.obj"
@@ -684,6 +732,215 @@ class RenderFormerMeshCombine:
 
         return (combined_ph_mesh,)
 
+class RenderFormerVideoSceneBuilder:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "mesh": ("PH_MESH",),
+                "camera_sequence": ("RENDERFORMER_CAMERA_SEQUENCE",),
+                "lighting": ("RENDERFORMER_LIGHTING",),
+            },
+            "optional": {
+                "add_default_background": ("BOOLEAN", {"default": False}),
+            }
+        }
+
+    RETURN_TYPES = ("RENDERFORMER_SCENE_SEQUENCE",)
+    FUNCTION = "build_video_scene"
+    CATEGORY = "PHRenderFormer"
+
+    def build_video_scene(self, mesh, camera_sequence, lighting, add_default_background=False):
+        scene_sequence = []
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            
+            # --- Pre-copy all mesh files ---
+            # Main meshes
+            for i, (mesh_obj, _, _) in enumerate(zip(mesh["meshes"], mesh["materials"], mesh["transforms"])):
+                temp_mesh_path = tmpdir_path / f"main_object_{i}.obj"
+                mesh_obj.export(temp_mesh_path)
+            
+            # Lighting mesh
+            template_mesh_root = Path(__file__).parent / "renderformer" / "examples"
+            if lighting and isinstance(lighting, list) and len(lighting) > 0:
+                light_mesh_path = template_mesh_root / "templates" / "lighting" / "tri.obj"
+                dest_light_path = tmpdir_path / "templates" / "lighting"
+                dest_light_path.mkdir(parents=True, exist_ok=True)
+                shutil.copy(light_mesh_path, dest_light_path / "tri.obj")
+
+            # Background meshes
+            if add_default_background:
+                background_template_path = template_mesh_root / "templates" / "backgrounds"
+                dest_background_path = tmpdir_path / "templates" / "backgrounds"
+                dest_background_path.mkdir(parents=True, exist_ok=True)
+                for bg_file in ["plane.obj", "wall0.obj", "wall1.obj", "wall2.obj"]:
+                    shutil.copy(background_template_path / bg_file, dest_background_path / bg_file)
+
+            # --- Process each camera frame ---
+            for cam in camera_sequence:
+                config_data = {
+                    "scene_name": "built_scene_frame",
+                    "version": "1.0",
+                    "objects": {},
+                    "cameras": [{
+                        "position": cam["position"],
+                        "look_at": cam["look_at"],
+                        "up": [0.0, 0.0, 1.0],
+                        "fov": cam["fov"]
+                    }]
+                }
+
+                # Add main objects
+                for i, (mesh_obj, material, transform) in enumerate(zip(mesh["meshes"], mesh["materials"], mesh["transforms"])):
+                    obj_key = f"main_object_{i}"
+                    
+                    # Define a default material and then update it with the provided one.
+                    # This ensures all required keys are present for dacite.
+                    final_material = {
+                        "diffuse": [0.8, 0.8, 0.8], 
+                        "specular": [0.1, 0.1, 0.1],
+                        "roughness": 0.7, 
+                        "emissive": [0.0, 0.0, 0.0],
+                        "smooth_shading": True,
+                        "rand_tri_diffuse_seed": None
+                    }
+                    if material:
+                        # Only update with keys that exist in the source material
+                        for key in ["diffuse", "specular", "roughness", "emissive"]:
+                            if key in material:
+                                final_material[key] = material[key]
+
+                    config_data["objects"][obj_key] = {
+                        "mesh_path": f"{obj_key}.obj",
+                        "transform": transform,
+                        "material": final_material
+                    }
+
+                # Add lights
+                if lighting and isinstance(lighting, list):
+                    for i, light_def in enumerate(lighting):
+                        obj_key = f"comfy_light_{i}"
+                        config_data["objects"][obj_key] = {
+                            "mesh_path": "templates/lighting/tri.obj",
+                            "transform": light_def["transform"],
+                            "material": light_def["material"]
+                        }
+                
+                # Add background
+                if add_default_background:
+                    background_files = ["plane.obj", "wall0.obj", "wall1.obj", "wall2.obj"]
+                    for i, bg_file in enumerate(background_files):
+                        obj_key = f"comfy_default_background_{i}"
+                        config_data["objects"][obj_key] = {
+                            "mesh_path": f"templates/backgrounds/{bg_file}",
+                            "transform": {
+                                "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0],
+                                "scale": [0.5, 0.5, 0.5], "normalize": False
+                            },
+                            "material": {
+                                "diffuse": [0.4, 0.4, 0.4], "specular": [0.0, 0.0, 0.0],
+                                "random_diffuse_max": 0.4, "roughness": 0.99,
+                                "emissive": [0.0, 0.0, 0.0], "smooth_shading": True,
+                                "rand_tri_diffuse_seed": None
+                            }
+                        }
+
+                # --- Conversion logic for a single frame ---
+                scene_config_dir = tmpdir_path
+                original_export = trimesh.exchange.export.export_mesh
+                original_load = trimesh.load
+                virtual_filesystem = {}
+
+                def patched_export(mesh, file_obj, file_type, **kwargs):
+                    with io.BytesIO() as buffer:
+                        actual_file_type = Path(file_obj).suffix[1:]
+                        mesh.export(buffer, file_type=actual_file_type, **kwargs)
+                        buffer.seek(0)
+                        virtual_filesystem[str(file_obj)] = buffer.read()
+
+                def patched_load(file_obj, **kwargs):
+                    if str(file_obj) in virtual_filesystem:
+                        with io.BytesIO(virtual_filesystem[str(file_obj)]) as buffer:
+                            return original_load(buffer, file_type=Path(file_obj).suffix[1:], **kwargs)
+                    return original_load(file_obj, **kwargs)
+
+                trimesh.exchange.export.export_mesh = patched_export
+                trimesh.load = patched_load
+
+                try:
+                    scene_config = from_dict(data_class=SceneConfig, data=config_data, config=Config(check_types=True, strict=True))
+                    with io.BytesIO() as h5_buffer:
+                        temp_mesh_dir_name = "temp_mesh_dir"
+                        generate_scene_mesh(scene_config, f"{temp_mesh_dir_name}/scene.obj", str(scene_config_dir))
+                        
+                        # This patched function is defined inside the loop to capture the correct scope
+                        def patched_save_to_h5(scene_config, mesh_path, output_h5_buffer):
+                            all_triangles, all_vn, all_texture = [], [], []
+                            size = 32
+                            mask = np.zeros((size, size), dtype=bool)
+                            x, y = np.meshgrid(np.arange(size), np.arange(size), indexing='ij')
+                            mask[x + y <= size] = 1
+                            
+                            split_mesh_path_prefix = os.path.dirname(mesh_path) + '/split'
+                            for obj_key, obj_config in scene_config.objects.items():
+                                mesh = trimesh.load(f'{split_mesh_path_prefix}/{obj_key}.obj', process=False, force='mesh')
+                                triangles = mesh.triangles
+                                vn = mesh.vertex_normals[mesh.faces]
+                                material_config = obj_config.material
+                                diffuse = mesh.visual.face_colors[..., :3] / 255.
+                                specular = np.array(material_config.specular)[None].repeat(triangles.shape[0], axis=0)
+                                roughness = np.array([material_config.roughness])[None].repeat(triangles.shape[0], axis=0)
+                                normal = np.array([0.5, 0.5, 1.0])[None].repeat(triangles.shape[0], axis=0)
+                                irradiance = np.array(material_config.emissive)[None, :].repeat(triangles.shape[0], axis=0)
+                                texture = np.concatenate([diffuse, specular, roughness, normal, irradiance], axis=1)
+                                texture = np.repeat(np.repeat(texture[..., None], size, axis=-1)[..., None], size, axis=-1)
+                                texture[:, :, ~mask] = 0.0
+                                all_triangles.append(triangles)
+                                all_vn.append(vn)
+                                all_texture.append(texture)
+                            
+                            all_triangles = np.concatenate(all_triangles, axis=0)
+                            all_vn = np.concatenate(all_vn, axis=0)
+                            all_texture = np.concatenate(all_texture, axis=0)
+                            
+                            all_c2w, all_fov = [], []
+                            for camera_config in scene_config.cameras:
+                                c2w = look_at_to_c2w(camera_config.position, camera_config.look_at)
+                                all_c2w.append(c2w)
+                                all_fov.append(camera_config.fov)
+                            
+                            all_c2w = np.stack(all_c2w)
+                            all_fov = np.array(all_fov)
+
+                            with h5py.File(output_h5_buffer, "w") as f:
+                                f.create_dataset("triangles", data=all_triangles.astype(np.float32), compression="gzip", compression_opts=9)
+                                f.create_dataset("vn", data=all_vn.astype(np.float32), compression="gzip", compression_opts=9)
+                                f.create_dataset("texture", data=all_texture.astype(np.float16), compression="gzip", compression_opts=9)
+                                f.create_dataset("c2w", data=all_c2w.astype(np.float32), compression="gzip", compression_opts=9)
+                                f.create_dataset("fov", data=all_fov.astype(np.float32), compression="gzip", compression_opts=9)
+
+                        patched_save_to_h5(scene_config, f"{temp_mesh_dir_name}/scene.obj", h5_buffer)
+
+                        h5_buffer.seek(0)
+                        with h5py.File(h5_buffer, 'r') as f:
+                            c2w_data = f['c2w'][:]
+                            fov_data = f['fov'][:]
+                            scene = {
+                                'triangles': torch.from_numpy(f['triangles'][:]).unsqueeze(0),
+                                'texture': torch.from_numpy(f['texture'][:]).unsqueeze(0),
+                                'mask': torch.ones(f['triangles'][:].shape[0], dtype=torch.bool).unsqueeze(0),
+                                'vn': torch.from_numpy(f['vn'][:]).unsqueeze(0),
+                                'c2w': torch.from_numpy(c2w_data).unsqueeze(0),
+                                'fov': torch.from_numpy(fov_data).unsqueeze(0).unsqueeze(-1),
+                            }
+                            scene_sequence.append(scene)
+                finally:
+                    trimesh.load = original_load
+                    trimesh.exchange.export.export_mesh = original_export
+        
+        return (scene_sequence,)
+
 class RenderFormerGenerator:
     """
     Renders an image using the RenderFormer pipeline.
@@ -749,6 +1006,63 @@ class RenderFormerGenerator:
 
         return (ldr_img_tensor,)
 
+class PHRenderFormerVideoSampler:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model": ("MODEL",),
+                "scene_sequence": ("RENDERFORMER_SCENE_SEQUENCE",),
+                "resolution": ("INT", {"default": 512, "min": 64, "max": 4096, "step": 64}),
+                "tone_mapper": (["none", "agx", "filmic", "pbr_neutral"], {"default": "agx"}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "generate_frames"
+    CATEGORY = "PHRenderFormer"
+
+    def generate_frames(self, model, scene_sequence, resolution, tone_mapper):
+        device = mm.get_torch_device()
+        pipeline = model["pipeline"]
+        torch_dtype = model["torch_dtype"]
+
+        frames = []
+        for scene in scene_sequence:
+            scene_on_device = scene.copy()
+            for key, tensor in scene_on_device.items():
+                scene_on_device[key] = tensor.to(device)
+
+            rendered_imgs = pipeline(
+                triangles=scene_on_device['triangles'],
+                texture=scene_on_device['texture'],
+                mask=scene_on_device['mask'],
+                vn=scene_on_device['vn'],
+                c2w=scene_on_device['c2w'],
+                fov=scene_on_device['fov'],
+                resolution=resolution,
+                torch_dtype=torch_dtype,
+            )
+
+            rendered_imgs = torch.pow(10., rendered_imgs) - 1.
+            hdr_img_tensor = rendered_imgs[0, 0].cpu()
+            hdr_img = hdr_img_tensor.numpy().astype(np.float32)
+
+            if tone_mapper != 'none':
+                from simple_ocio import ToneMapper
+                if tone_mapper == 'pbr_neutral':
+                    tone_mapper = 'Khronos PBR Neutral'
+                tm = ToneMapper(tone_mapper)
+                ldr_img = tm.hdr_to_ldr(hdr_img)
+            else:
+                ldr_img = np.clip(hdr_img, 0, 1)
+            
+            frames.append(ldr_img)
+
+        frames_tensor = torch.from_numpy(np.array(frames).astype(np.float32))
+        
+        return (frames_tensor,)
+
 class LoadRenderFormerExampleScene:
     """
     Loads an example scene from the RenderFormer examples directory.
@@ -756,7 +1070,7 @@ class LoadRenderFormerExampleScene:
     to generate the scene data in memory, replicating the original workflow.
     """
     
-    EXAMPLE_DIR = Path(__file__).parent / "example_repos" / "renderformer" / "examples"
+    EXAMPLE_DIR = Path(__file__).parent / "renderformer" / "examples"
     EXAMPLE_FILES = [f.name for f in EXAMPLE_DIR.glob("*.json")]
 
     @classmethod
@@ -773,7 +1087,7 @@ class LoadRenderFormerExampleScene:
 
     def load_example_scene(self, scene_file):
         # Define paths
-        base_path = Path(__file__).parent / "example_repos" / "renderformer"
+        base_path = Path(__file__).parent / "renderformer"
         scene_config_path = base_path / "examples" / scene_file
         scene_config_dir = scene_config_path.parent
 
@@ -1220,7 +1534,7 @@ class RenderFormerFromJSON:
                 json.dump(config_data, f)
 
             user_mesh_root = Path(mesh_root_dir) if mesh_root_dir and os.path.isdir(mesh_root_dir) else None
-            template_mesh_root = Path(__file__).parent / "example_repos" / "renderformer" / "examples"
+            template_mesh_root = Path(__file__).parent / "renderformer" / "examples"
 
             if "objects" in config_data:
                 for obj_key, obj_data in config_data["objects"].items():
@@ -1362,9 +1676,12 @@ class RenderFormerFromJSON:
 NODE_CLASS_MAPPINGS = {
     "RenderFormerModelLoader": RenderFormerModelLoader,
     "RenderFormerCamera": RenderFormerCamera,
+    "PHRenderFormerCameraTarget": PHRenderFormerCameraTarget,
     "RenderFormerLighting": RenderFormerLighting,
     "RenderFormerSceneBuilder": RenderFormerSceneBuilder,
+    "RenderFormerVideoSceneBuilder": RenderFormerVideoSceneBuilder,
     "RenderFormerGenerator": RenderFormerGenerator,
+    "PHRenderFormerVideoSampler": PHRenderFormerVideoSampler,
     "LoadMesh": LoadMesh,
     "RemeshMesh": RemeshMesh,
     "RandomizeColors": RandomizeColors,
@@ -1377,9 +1694,12 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "RenderFormerModelLoader": "PHRenderFormer Model Loader",
     "RenderFormerCamera": "PHRenderFormer Camera",
+    "PHRenderFormerCameraTarget": "PHRenderFormer Camera Target",
     "RenderFormerLighting": "PHRenderFormer Lighting",
     "RenderFormerSceneBuilder": "PHRenderFormer Scene Builder",
+    "RenderFormerVideoSceneBuilder": "PHRenderFormer Video Scene Builder",
     "RenderFormerGenerator": "PHRenderFormer Sampler",
+    "PHRenderFormerVideoSampler": "PHRenderFormer Video Sampler",
     "LoadMesh": "PHRenderFormer Mesh Loader",
     "RemeshMesh": "PHRenderFormer Remesh",
     "RandomizeColors": "PHRenderFormer Random Colors",
