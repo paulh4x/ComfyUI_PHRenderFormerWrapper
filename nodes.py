@@ -115,20 +115,19 @@ class LoadMesh:
                 "trans_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
                 "trans_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
                 "trans_z": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
-                "rot_x": ("FLOAT", {"default": -90.0, "min": -360.0, "max": 360.0, "step": 1.0}),
-                "rot_y": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 1.0}),
-                "rot_z": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 1.0}),
-                "scale": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1}),
+                "rot_x": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
+                "rot_y": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
+                "rot_z": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
+                "scale": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.01}),
 
                 # Material properties
                 "diffuse_rgb": ("STRING", {"default": "204, 204, 204", "multiline": False, "tooltip": "Diffuse color (R, G, B) from 0-255"}),
                 "specular_rgb": ("STRING", {"default": "25, 25, 25", "multiline": False, "tooltip": "Specular color (R, G, B) from 0-255"}),
                 "roughness": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 1.0, "step": 0.01}),
-                "emissive_rgb": ("STRING", {"default": "0, 0, 0", "multiline": False, "tooltip": "Emissive strength (R, G, B). Values can exceed 255."}),
             }
         }
 
-    RETURN_TYPES = ("PH_MESH",)
+    RETURN_TYPES = ("PH_MESH", "RENDERFORMER_MATERIAL",)
     FUNCTION = "load_mesh"
     CATEGORY = "PHRenderFormer"
 
@@ -145,9 +144,17 @@ class LoadMesh:
 
     def load_mesh(self, mesh, material=None, mesh_path=None,
                   normalize_mesh=True, trans_x=0.0, trans_y=0.0, trans_z=0.0,
-                  rot_x=-90.0, rot_y=0.0, rot_z=0.0, scale=1.0,
+                  rot_x=0.0, rot_y=0.0, rot_z=0.0, scale=1.0,
                   diffuse_rgb="204, 204, 204",
-                  specular_rgb="25, 25, 25", roughness=0.7, emissive_rgb="0, 0, 0"):
+                  specular_rgb="25, 25, 25", roughness=0.7):
+        
+        # Default transformations for specific background files from cbox-bunny.json
+        background_files = ["plane.obj", "wall0.obj", "wall1.obj", "wall2.obj"]
+        if mesh in background_files:
+            normalize_mesh = False
+            trans_x, trans_y, trans_z = 0.0, 0.0, 0.0
+            rot_x, rot_y, rot_z = 0.0, 0.0, 0.0
+            scale = 0.5
         
         final_material = None
 
@@ -158,13 +165,12 @@ class LoadMesh:
             # Otherwise, build the material from the node's own inputs.
             diffuse_color = self._parse_color_string(diffuse_rgb, 255.0) or [0.8, 0.8, 0.8]
             specular_color = self._parse_color_string(specular_rgb, 255.0) or [0.1, 0.1, 0.1]
-            emissive_color = self._parse_color_string(emissive_rgb, 1.0) or [0.0, 0.0, 0.0]
 
             final_material = {
                 "diffuse": diffuse_color,
                 "specular": specular_color,
                 "roughness": roughness,
-                "emissive": emissive_color
+                "emissive": [0.0, 0.0, 0.0]
             }
 
         # Load mesh from path
@@ -194,7 +200,7 @@ class LoadMesh:
             "transforms": [transform]
         }
         
-        return (ph_mesh,)
+        return (ph_mesh, final_material)
 
 class RemeshMesh:
     @classmethod
@@ -304,12 +310,12 @@ class RenderFormerCamera:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "camera_pos_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.1}),
-                "camera_pos_y": ("FLOAT", {"default": -2.0, "min": -10.0, "max": 10.0, "step": 0.1}),
-                "camera_pos_z": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.1}),
-                "camera_look_at_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.1}),
-                "camera_look_at_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.1}),
-                "camera_look_at_z": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.1}),
+                "camera_pos_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "camera_pos_y": ("FLOAT", {"default": -2.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "camera_pos_z": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "camera_look_at_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "camera_look_at_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "camera_look_at_z": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
                 "fov": ("FLOAT", {"default": 37.5, "min": 1.0, "max": 179.0, "step": 1.0, "tooltip": "Field of View in degrees"}),
             }
         }
@@ -337,10 +343,10 @@ class RenderFormerLighting:
                 "trans_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
                 "trans_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
                 "trans_z": ("FLOAT", {"default": 2.1, "min": -10.0, "max": 10.0, "step": 0.001}),
-                "rot_x": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 1.0}),
-                "rot_y": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 1.0}),
-                "rot_z": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 1.0}),
-                "scale": ("FLOAT", {"default": 2.5, "min": 0.1, "max": 10.0, "step": 0.1}),
+                "rot_x": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
+                "rot_y": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
+                "rot_z": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
+                "scale": ("FLOAT", {"default": 2.5, "min": 0.1, "max": 10.0, "step": 0.01}),
             }
         }
 

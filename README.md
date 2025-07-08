@@ -21,6 +21,17 @@ What started as a simple experiment quickly grew into a passion project. It has 
 
 ---
 
+### Version 0.2 - Refinements and Fixes
+
+This version focuses on improving the usability and stability of the nodes, with several key refinements and bug fixes.
+
+**Key Features & Accomplishments:**
+
+*   **Material Output:** The `LoadMesh` node now has a `RENDERFORMER_MATERIAL` output, allowing you to pipe the material from one mesh to another.
+*   **Default Transformations:** When loading specific background meshes from the `cbox-bunny.json` example (`plane.obj`, `wall0.obj`, `wall1.obj`, `wall2.obj`), the node now automatically applies the correct transformation values.
+*   **Increased Precision:** The precision for rotation and scale inputs has been increased for finer control over transformations.
+*   **Bug Fixes:** Resolved an out-of-memory error that could occur with high-resolution rendering or complex scenes.
+
 ### Version 0.1 - Initial Development
 
 This initial version of the PHRenderFormerWrapper lays the foundation for rendering 3D scenes within ComfyUI. The focus was on establishing the core architecture, implementing a comprehensive set of nodes for scene construction, and creating a flexible, user-friendly workflow.
