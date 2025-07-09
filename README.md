@@ -43,6 +43,7 @@ This project is under active development. Here is a summary of the progress so f
 
 -   [ ] **Mesh Format Support:** Add support for loading `.glb` and `.fbx` files, including their materials and textures.
 -   [ ] **Target Animation Nodes:** Implement animation capabilities for `MESH` and `LIGHT` properties, not just the camera.
+-   [ ] **Proper RGB Values for diffuse Color:** Colorpicker support for white-values for more variety of colors including.
 -   [ ] **Camera Adoption:** Integrate with the `Load 3D` core node to adopt its camera transformations.
 -   [ ] **Randomize Color Fix:** Investigate and fix the `RandomizeColors` node, which is not producing the expected visual output.
 -   [ ] **Material Presets:** Create a system for saving and loading material presets.
