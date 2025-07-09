@@ -39,7 +39,25 @@ function rgbToHsv(r, g, b) {
         }
         h /= 6;
     }
-    return { h, s, v };
+    return { h: h * 360, s: s, v: v };
+}
+
+function hsvToRgb(h, s, v) {
+    let r, g, b;
+    let i = Math.floor(h / 60);
+    let f = h / 60 - i;
+    let p = v * (1 - s);
+    let q = v * (1 - f * s);
+    let t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+    return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
 }
 
 function rgb_to_hex(r, g, b) {
@@ -123,10 +141,17 @@ app.registerExtension({
             const WIDGET_HEIGHT = 20;
             const WIDGET_MARGIN = 5;
             const PICKER_AREA_HEIGHT = 150;
+            const HUE_SLIDER_HEIGHT = 20;
+            const PREVIEW_BOX_WIDTH = 50;
 
-            let gradientWidth, gradientHeight = PICKER_AREA_HEIGHT;
-            let pickerPos = { x: 0, y: 0 };
-            let isPickerActive = false;
+            let mainPickerWidth, mainPickerHeight = PICKER_AREA_HEIGHT;
+            let hueSliderWidth, hueSliderHeight = HUE_SLIDER_HEIGHT;
+            
+            let svPickerPos = { x: 0, y: 0 };
+            let huePickerPos = 0;
+            
+            let isSVPickerActive = false;
+            let isHuePickerActive = false;
 
             const colorWidget = node.widgets.find(w => w.name === "diffuse_rgb");
             if (!colorWidget) {
@@ -134,60 +159,28 @@ app.registerExtension({
                 return;
             }
 
-            let selectedColor = "#CCCCCC";
+            let hsv = { h: 0, s: 1, v: 1 };
 
-            function calculatePickerPosFromHex(hex) {
-                const rgb = hexToRgb(hex);
-                if (!rgb) return { x: 0, y: 0 };
-                const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
-                const x = hsv.h * (gradientWidth || 200);
-                const y = (1 - hsv.v) * gradientHeight;
-                return {
-                    x: Math.max(0, Math.min(x, gradientWidth || 200)),
-                    y: Math.max(0, Math.min(y, gradientHeight))
-                };
-            }
-
-            function updateColorOutput() {
-                const rgb = hexToRgb(selectedColor);
-                if (rgb) {
-                    colorWidget.value = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
-                }
+            function updateColorFromHSV() {
+                const rgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
+                colorWidget.value = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
                 node.setDirtyCanvas(true, true);
             }
 
-            function updateSelectedColor(x, y) {
-                x = Math.max(0, Math.min(x, gradientWidth || 0));
-                y = Math.max(0, Math.min(y, gradientHeight || 0));
-                pickerPos = { x, y };
+            function updateSV(x, y) {
+                x = Math.max(0, Math.min(x, mainPickerWidth));
+                y = Math.max(0, Math.min(y, mainPickerHeight));
+                svPickerPos = { x, y };
+                hsv.s = x / mainPickerWidth;
+                hsv.v = 1 - (y / mainPickerHeight);
+                updateColorFromHSV();
+            }
 
-                if (gradientWidth > 0 && gradientHeight > 0) {
-                    const offscreenCanvas = document.createElement('canvas');
-                    offscreenCanvas.width = gradientWidth;
-                    offscreenCanvas.height = gradientHeight;
-                    const offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
-
-                    const gradient = offscreenCtx.createLinearGradient(0, 0, gradientWidth, 0);
-                    gradient.addColorStop(0, "rgb(255, 0, 0)");
-                    gradient.addColorStop(0.17, "rgb(255, 255, 0)");
-                    gradient.addColorStop(0.33, "rgb(0, 255, 0)");
-                    gradient.addColorStop(0.5, "rgb(0, 255, 255)");
-                    gradient.addColorStop(0.67, "rgb(0, 0, 255)");
-                    gradient.addColorStop(0.83, "rgb(255, 0, 255)");
-                    gradient.addColorStop(1, "rgb(255, 0, 0)");
-                    offscreenCtx.fillStyle = gradient;
-                    offscreenCtx.fillRect(0, 0, gradientWidth, gradientHeight);
-
-                    const blackGradient = offscreenCtx.createLinearGradient(0, 0, 0, gradientHeight);
-                    blackGradient.addColorStop(0, "rgba(0, 0, 0, 0)");
-                    blackGradient.addColorStop(1, "rgba(0, 0, 0, 1)");
-                    offscreenCtx.fillStyle = blackGradient;
-                    offscreenCtx.fillRect(0, 0, gradientWidth, gradientHeight);
-
-                    const pixelData = offscreenCtx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
-                    selectedColor = rgb_to_hex(pixelData[0], pixelData[1], pixelData[2]);
-                }
-                updateColorOutput();
+            function updateHue(x) {
+                x = Math.max(0, Math.min(x, hueSliderWidth));
+                huePickerPos = x;
+                hsv.h = (x / hueSliderWidth) * 360;
+                updateColorFromHSV();
             }
 
             const pickerWidget = node.addCustomWidget({
@@ -195,78 +188,110 @@ app.registerExtension({
                 type: "CANVAS_WIDGET",
                 y: colorWidget.y,
                 draw: function (ctx, node, widgetWidth, widgetY, height) {
-                    gradientWidth = widgetWidth - PADDING * 2;
+                    const totalWidth = widgetWidth - PADDING * 2;
+                    mainPickerWidth = totalWidth - PREVIEW_BOX_WIDTH - WIDGET_MARGIN;
+                    hueSliderWidth = mainPickerWidth;
                     const drawY = widgetY + PADDING;
 
                     ctx.save();
                     ctx.translate(PADDING, drawY);
 
-                    if (gradientWidth > 0 && gradientHeight > 0) {
-                        const gradient = ctx.createLinearGradient(0, 0, gradientWidth, 0);
-                        gradient.addColorStop(0, "rgb(255, 0, 0)");
-                        gradient.addColorStop(0.17, "rgb(255, 255, 0)");
-                        gradient.addColorStop(0.33, "rgb(0, 255, 0)");
-                        gradient.addColorStop(0.5, "rgb(0, 255, 255)");
-                        gradient.addColorStop(0.67, "rgb(0, 0, 255)");
-                        gradient.addColorStop(0.83, "rgb(255, 0, 255)");
-                        gradient.addColorStop(1, "rgb(255, 0, 0)");
-                        ctx.fillStyle = gradient;
-                        ctx.fillRect(0, 0, gradientWidth, gradientHeight);
+                    // --- Draw Saturation/Value Box ---
+                    const mainHueRgb = hsvToRgb(hsv.h, 1, 1);
+                    ctx.fillStyle = `rgb(${mainHueRgb.r}, ${mainHueRgb.g}, ${mainHueRgb.b})`;
+                    ctx.fillRect(PREVIEW_BOX_WIDTH + WIDGET_MARGIN, 0, mainPickerWidth, mainPickerHeight);
 
-                        const blackGradient = ctx.createLinearGradient(0, 0, 0, gradientHeight);
-                        blackGradient.addColorStop(0, "rgba(0, 0, 0, 0)");
-                        blackGradient.addColorStop(1, "rgba(0, 0, 0, 1)");
-                        ctx.fillStyle = blackGradient;
-                        ctx.fillRect(0, 0, gradientWidth, gradientHeight);
+                    const svBoxX = PREVIEW_BOX_WIDTH + WIDGET_MARGIN;
+                    const whiteGradient = ctx.createLinearGradient(svBoxX, 0, svBoxX + mainPickerWidth, 0);
+                    whiteGradient.addColorStop(0, "rgba(255,255,255,1)");
+                    whiteGradient.addColorStop(1, "rgba(255,255,255,0)");
+                    ctx.fillStyle = whiteGradient;
+                    ctx.fillRect(svBoxX, 0, mainPickerWidth, mainPickerHeight);
 
-                        const pickerDrawX = Math.max(0, Math.min(pickerPos.x, gradientWidth));
-                        const pickerDrawY = Math.max(0, Math.min(pickerPos.y, gradientHeight));
-                        ctx.beginPath();
-                        ctx.arc(pickerDrawX, pickerDrawY, 5, 0, Math.PI * 2);
-                        ctx.strokeStyle = isPickerActive ? "yellow" : "white";
-                        ctx.lineWidth = 2;
-                        ctx.stroke();
-                    }
+                    const blackGradient = ctx.createLinearGradient(svBoxX, 0, svBoxX, mainPickerHeight);
+                    blackGradient.addColorStop(0, "rgba(0,0,0,0)");
+                    blackGradient.addColorStop(1, "rgba(0,0,0,1)");
+                    ctx.fillStyle = blackGradient;
+                    ctx.fillRect(svBoxX, 0, mainPickerWidth, mainPickerHeight);
 
-                    ctx.fillStyle = selectedColor;
-                    ctx.fillRect(0, gradientHeight + WIDGET_MARGIN, gradientWidth, WIDGET_HEIGHT);
+                    // --- Draw Hue Slider ---
+                    const hueSliderY = mainPickerHeight + WIDGET_MARGIN;
+                    const hueGradient = ctx.createLinearGradient(svBoxX, 0, svBoxX + hueSliderWidth, 0);
+                    hueGradient.addColorStop(0, "rgb(255, 0, 0)");
+                    hueGradient.addColorStop(0.17, "rgb(255, 255, 0)");
+                    hueGradient.addColorStop(0.33, "rgb(0, 255, 0)");
+                    hueGradient.addColorStop(0.5, "rgb(0, 255, 255)");
+                    hueGradient.addColorStop(0.67, "rgb(0, 0, 255)");
+                    hueGradient.addColorStop(0.83, "rgb(255, 0, 255)");
+                    hueGradient.addColorStop(1, "rgb(255, 0, 0)");
+                    ctx.fillStyle = hueGradient;
+                    ctx.fillRect(svBoxX, hueSliderY, hueSliderWidth, hueSliderHeight);
 
+                    // --- Draw Pickers ---
+                    const svX = svPickerPos.x + PREVIEW_BOX_WIDTH + WIDGET_MARGIN;
+                    const svY = svPickerPos.y;
+                    ctx.beginPath();
+                    ctx.arc(svX, svY, 5, 0, 2 * Math.PI);
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(svX, svY, 7, 0, 2 * Math.PI);
+                    ctx.strokeStyle = "black";
+                    ctx.stroke();
+
+                    const hueX = huePickerPos + PREVIEW_BOX_WIDTH + WIDGET_MARGIN;
                     ctx.fillStyle = "white";
-                    ctx.font = "12px Arial";
-                    ctx.textAlign = "left";
-                    ctx.fillText(selectedColor, 5, gradientHeight + WIDGET_MARGIN + WIDGET_HEIGHT - 5);
+                    ctx.fillRect(hueX - 2, hueSliderY, 4, hueSliderHeight);
+                    ctx.strokeStyle = "black";
+                    ctx.strokeRect(hueX - 2, hueSliderY, 4, hueSliderHeight);
 
+                    // --- Draw Preview Box ---
+                    const finalRgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
+                    ctx.fillStyle = `rgb(${finalRgb.r}, ${finalRgb.g}, ${finalRgb.b})`;
+                    ctx.fillRect(0, 0, PREVIEW_BOX_WIDTH, mainPickerHeight + WIDGET_MARGIN + hueSliderHeight);
+                    
                     ctx.restore();
                 },
                 mouse: function (event, pos, node) {
                     const widgetRect = this.computeArea();
-                    const gradientAreaX = PADDING;
-                    const gradientAreaY = widgetRect.y + PADDING;
+                    const clickX = pos[0] - PADDING;
+                    const clickY = pos[1] - (widgetRect.y + PADDING);
 
-                    const clickX = pos[0] - gradientAreaX;
-                    const clickY = pos[1] - gradientAreaY;
+                    const svBox = { x: PREVIEW_BOX_WIDTH + WIDGET_MARGIN, y: 0, w: mainPickerWidth, h: mainPickerHeight };
+                    const hueBox = { x: PREVIEW_BOX_WIDTH + WIDGET_MARGIN, y: mainPickerHeight + WIDGET_MARGIN, w: hueSliderWidth, h: hueSliderHeight };
 
                     if (event.type === "pointerdown") {
-                        if (clickX >= 0 && clickX <= gradientWidth && clickY >= 0 && clickY <= gradientHeight) {
-                            isPickerActive = true;
-                            updateSelectedColor(clickX, clickY);
-                            event.stopPropagation();
+                        if (clickX > svBox.x && clickX < svBox.x + svBox.w && clickY > svBox.y && clickY < svBox.y + svBox.h) {
+                            isSVPickerActive = true;
+                            updateSV(clickX - svBox.x, clickY - svBox.y);
                             return true;
                         }
-                    } else if (event.type === "pointermove" && isPickerActive) {
-                        updateSelectedColor(clickX, clickY);
-                        return true;
-                    } else if (event.type === "pointerup" && isPickerActive) {
-                        isPickerActive = false;
-                        return true;
+                        if (clickX > hueBox.x && clickX < hueBox.x + hueBox.w && clickY > hueBox.y && clickY < hueBox.y + hueBox.h) {
+                            isHuePickerActive = true;
+                            updateHue(clickX - hueBox.x);
+                            return true;
+                        }
+                    } else if (event.type === "pointermove") {
+                        if (isSVPickerActive) {
+                            updateSV(clickX - svBox.x, clickY - svBox.y);
+                            return true;
+                        }
+                        if (isHuePickerActive) {
+                            updateHue(clickX - hueBox.x);
+                            return true;
+                        }
+                    } else if (event.type === "pointerup") {
+                        isSVPickerActive = false;
+                        isHuePickerActive = false;
                     }
                     return false;
                 },
                 computeSize: function (width) {
-                    const totalHeight = PADDING * 2 + gradientHeight + WIDGET_MARGIN + WIDGET_HEIGHT;
+                    const totalHeight = PADDING * 2 + mainPickerHeight + WIDGET_MARGIN + hueSliderHeight;
                     return [width, totalHeight];
                 },
-                computeArea: function() {
+                 computeArea: function() {
                     let y = this.y || 0;
                     let totalHeight = this.computeSize(node.size[0])[1];
                     return { x: 0, y: y, w: node.size[0], h: totalHeight };
@@ -277,12 +302,18 @@ app.registerExtension({
 
             function initializePicker() {
                 const initialRgb = rgbStringToRgb(colorWidget.value);
-                selectedColor = rgb_to_hex(initialRgb.r, initialRgb.g, initialRgb.b);
+                hsv = rgbToHsv(initialRgb.r, initialRgb.g, initialRgb.b);
                 
                 node.setSize(node.computeSize());
-                gradientWidth = node.size[0] - PADDING * 2;
-                pickerPos = calculatePickerPosFromHex(selectedColor);
-                updateColorOutput();
+                const totalWidth = node.size[0] - PADDING * 2;
+                mainPickerWidth = totalWidth - PREVIEW_BOX_WIDTH - WIDGET_MARGIN;
+                hueSliderWidth = mainPickerWidth;
+
+                svPickerPos.x = hsv.s * mainPickerWidth;
+                svPickerPos.y = (1 - hsv.v) * mainPickerHeight;
+                huePickerPos = (hsv.h / 360) * hueSliderWidth;
+                
+                updateColorFromHSV();
             }
             
             setTimeout(() => initializePicker(), 0);
