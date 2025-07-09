@@ -25,7 +25,30 @@ This repository contains a set of custom nodes for ComfyUI that provide a wrappe
 
 ---
 
-### 🛠️ Installation
+### 📝 Progress & To-Do
+
+This project is under active development. Here is a summary of the progress so far and the features planned for the future.
+
+#### ✅ Done
+
+-   **Core Rendering Pipeline:** All essential nodes for building and rendering a static 3D scene are implemented.
+-   **In-Memory Processing:** The entire scene preparation pipeline is handled in-memory to maximize speed.
+-   **Video Rendering:** A complete, dedicated workflow for video rendering is in place.
+-   **Advanced Utilities:** Nodes for mesh combination, remeshing, and JSON-based scene loading are functional.
+-   **Custom UI Elements:** The nodes feature custom colors for better visual organization, and progress bars are implemented for long-running operations.
+-   **Bug Fixes:** Addressed various bugs related to file handling, data types, and temporary file management.
+
+#### 📋 To Do
+
+-   [ ] **Target Animation Nodes:** Implement animation capabilities for `MESH` and `LIGHT` properties, not just the camera.
+-   [ ] **Camera Adoption:** Integrate with the `Load 3D` core node to adopt its camera transformations.
+-   [ ] **Randomize Color Fix:** Investigate and fix the `RandomizeColors` node, which is not producing the expected visual output.
+-   [ ] **Material Presets:** Create a system for saving and loading material presets.
+-   [ ] **Public Release:** Prepare for a more stable, public release with better documentation and examples.
+
+---
+
+### ️ Installation
 
 #### Prerequisites
 
@@ -98,6 +121,13 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 ---
 
 ### Version History
+
+#### Beta Test - UI/UX and Workflow Enhancements
+-   **UI/UX:** All nodes now have custom colors for better visual organization in the graph. The header is yellow (`#FDC501`) and the body is anthracite (`#111417`).
+-   **UI/UX:** Added progress bars to all long-running nodes (`SceneBuilder`, `VideoSceneBuilder`, `Sampler`, `VideoSampler`, `Remesh`) to provide real-time feedback.
+-   **Workflow:** The `Remesh` node now processes all meshes in a list, not just the first one.
+-   **Workflow:** The `SceneBuilder` nodes will no longer add the default background if a background mesh has already been loaded manually, preventing duplicates.
+-   **Input Precision:** The `emissive_strength` input on the `Lighting` node now has a smaller step value for finer control.
 
 #### Version 0.3 - Video Rendering and Stability
 -   **Feature:** Added a complete, dedicated workflow for video rendering (`Camera Target`, `Video Scene Builder`, `Video Sampler`).

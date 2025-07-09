@@ -14,6 +14,7 @@ import shutil
 import comfy.model_management as mm
 import folder_paths
 import imageio
+import comfy.utils
 script_directory = Path(__file__).parent
 renderformer_repo_path = script_directory / "renderformer"
 scene_processor_path = renderformer_repo_path / "scene_processor"
@@ -107,7 +108,7 @@ class LoadMesh:
                 "mesh": (folder_paths.get_filename_list("3d"), ),
             },
             "optional": {
-                "material": ("RENDERFORMER_MATERIAL",),
+                "material": ("MATERIAL",),
                 "mesh_path": ("STRING", ),
                 
                 # Transform properties
@@ -127,7 +128,7 @@ class LoadMesh:
             }
         }
 
-    RETURN_TYPES = ("PH_MESH", "RENDERFORMER_MATERIAL",)
+    RETURN_TYPES = ("MESH", "MATERIAL",)
     FUNCTION = "load_mesh"
     CATEGORY = "PHRenderFormer"
 
@@ -207,64 +208,58 @@ class RemeshMesh:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "mesh": ("PH_MESH",),
+                "mesh": ("MESH",),
                 "target_face_count": ("INT", {"default": 4096, "min": 100, "max": 100000, "step": 100}),
             }
         }
 
-    RETURN_TYPES = ("PH_MESH",)
+    RETURN_TYPES = ("MESH",)
     FUNCTION = "remesh"
     CATEGORY = "PHRenderFormer"
 
     def remesh(self, mesh, target_face_count):
         import pymeshlab
         
-        # We only remesh the first mesh in the list for now.
-        # A more complex implementation could handle multiple meshes.
-        if not mesh["meshes"]:
-            return (mesh,)
+        new_meshes = []
+        pbar = comfy.utils.ProgressBar(len(mesh["meshes"]))
+        for m in mesh["meshes"]:
+            ms = pymeshlab.MeshSet()
+            ms.add_mesh(pymeshlab.Mesh(vertex_matrix=m.vertices, face_matrix=m.faces))
+            
+            ms.meshing_isotropic_explicit_remeshing(
+                targetlen=pymeshlab.PercentageValue(0.5),
+                featuredeg=30,
+                adaptive=False
+            )
+            ms.meshing_decimation_quadric_edge_collapse(
+                targetfacenum=target_face_count,
+                qualitythr=1.0
+            )
+            
+            processed_mesh_lab = ms.current_mesh()
+            vertices = processed_mesh_lab.vertex_matrix()
+            faces = processed_mesh_lab.face_matrix()
+            
+            processed_trimesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+            new_meshes.append(processed_trimesh)
+            pbar.update(1)
 
-        first_mesh = mesh["meshes"][0]
+        new_mesh_data = mesh.copy()
+        new_mesh_data["meshes"] = new_meshes
         
-        ms = pymeshlab.MeshSet()
-        ms.add_mesh(pymeshlab.Mesh(vertex_matrix=first_mesh.vertices, face_matrix=first_mesh.faces))
-        
-        ms.meshing_isotropic_explicit_remeshing(
-            targetlen=pymeshlab.PercentageValue(0.5),
-            featuredeg=30,
-            adaptive=False
-        )
-        ms.meshing_decimation_quadric_edge_collapse(
-            targetfacenum=target_face_count,
-            qualitythr=1.0
-        )
-        
-        processed_mesh_lab = ms.current_mesh()
-        vertices = processed_mesh_lab.vertex_matrix()
-        faces = processed_mesh_lab.face_matrix()
-        
-        processed_trimesh = trimesh.Trimesh(vertices=vertices, faces=faces)
-        
-        # Create a new PH_MESH object with the processed mesh and original material
-        new_ph_mesh = {
-            "meshes": [processed_trimesh] + mesh["meshes"][1:],
-            "materials": mesh["materials"],
-            "transforms": mesh["transforms"]
-        }
-        
-        return (new_ph_mesh,)
+        return (new_mesh_data,)
 
 class RandomizeColors:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "mesh": ("PH_MESH",),
+                "mesh": ("MESH",),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             }
         }
 
-    RETURN_TYPES = ("PH_MESH",)
+    RETURN_TYPES = ("MESH",)
     FUNCTION = "randomize"
     CATEGORY = "PHRenderFormer"
 
@@ -294,13 +289,13 @@ class RandomizeColors:
         # Apply the colors to the mesh faces
         mesh_copy.visual.face_colors = colors.astype(np.uint8)
         
-        new_ph_mesh = {
+        new_mesh = {
             "meshes": [mesh_copy] + mesh["meshes"][1:],
             "materials": mesh["materials"],
             "transforms": mesh["transforms"]
         }
         
-        return (new_ph_mesh,)
+        return (new_mesh,)
 
 class RenderFormerCamera:
     """
@@ -320,7 +315,7 @@ class RenderFormerCamera:
             }
         }
 
-    RETURN_TYPES = ("RENDERFORMER_CAMERA",)
+    RETURN_TYPES = ("CAMERA",)
     FUNCTION = "get_camera"
     CATEGORY = "PHRenderFormer"
 
@@ -338,7 +333,7 @@ class PHRenderFormerCameraTarget:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "start_camera": ("RENDERFORMER_CAMERA",),
+                "start_camera": ("CAMERA",),
                 "end_pos_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
                 "end_pos_y": ("FLOAT", {"default": -2.0, "min": -10.0, "max": 10.0, "step": 0.01}),
                 "end_pos_z": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
@@ -350,7 +345,7 @@ class PHRenderFormerCameraTarget:
             }
         }
 
-    RETURN_TYPES = ("RENDERFORMER_CAMERA_SEQUENCE",)
+    RETURN_TYPES = ("CAMERA_SEQUENCE",)
     FUNCTION = "get_camera_sequence"
     CATEGORY = "PHRenderFormer"
 
@@ -387,7 +382,7 @@ class RenderFormerLighting:
         return {
             "required": {
                 "emissive_rgb": ("STRING", {"default": "255, 255, 255", "multiline": False, "tooltip": "Emissive color (R, G, B) from 0-255"}),
-                "emissive_strength": ("FLOAT", {"default": 5000.0, "min": 0.0, "max": 100000.0, "step": 100.0}),
+                "emissive_strength": ("FLOAT", {"default": 5000.0, "min": 0.0, "max": 100000.0, "step": 10.0}),
                 "trans_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
                 "trans_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
                 "trans_z": ("FLOAT", {"default": 2.1, "min": -10.0, "max": 10.0, "step": 0.001}),
@@ -398,7 +393,7 @@ class RenderFormerLighting:
             }
         }
 
-    RETURN_TYPES = ("RENDERFORMER_LIGHTING",)
+    RETURN_TYPES = ("LIGHTING",)
     FUNCTION = "get_lighting"
     CATEGORY = "PHRenderFormer"
 
@@ -447,20 +442,20 @@ class RenderFormerLightingCombine:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "lighting_1": ("RENDERFORMER_LIGHTING",),
+                "lighting_1": ("LIGHTING",),
             },
             "optional": {
-                "lighting_2": ("RENDERFORMER_LIGHTING",),
-                "lighting_3": ("RENDERFORMER_LIGHTING",),
-                "lighting_4": ("RENDERFORMER_LIGHTING",),
-                "lighting_5": ("RENDERFORMER_LIGHTING",),
-                "lighting_6": ("RENDERFORMER_LIGHTING",),
-                "lighting_7": ("RENDERFORMER_LIGHTING",),
-                "lighting_8": ("RENDERFORMER_LIGHTING",),
+                "lighting_2": ("LIGHTING",),
+                "lighting_3": ("LIGHTING",),
+                "lighting_4": ("LIGHTING",),
+                "lighting_5": ("LIGHTING",),
+                "lighting_6": ("LIGHTING",),
+                "lighting_7": ("LIGHTING",),
+                "lighting_8": ("LIGHTING",),
             }
         }
 
-    RETURN_TYPES = ("RENDERFORMER_LIGHTING",)
+    RETURN_TYPES = ("LIGHTING",)
     FUNCTION = "combine_lighting"
     CATEGORY = "PHRenderFormer"
 
@@ -482,21 +477,23 @@ class RenderFormerSceneBuilder:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "mesh": ("PH_MESH",),
-                "camera": ("RENDERFORMER_CAMERA",),
-                "lighting": ("RENDERFORMER_LIGHTING",),
+                "mesh": ("MESH",),
+                "camera": ("CAMERA",),
+                "lighting": ("LIGHTING",),
             },
             "optional": {
                  "add_default_background": ("BOOLEAN", {"default": False}),
             }
         }
 
-    RETURN_TYPES = ("RENDERFORMER_SCENE",)
+    RETURN_TYPES = ("SCENE",)
     FUNCTION = "build_scene"
     CATEGORY = "PHRenderFormer"
 
     def build_scene(self, mesh, camera, lighting, add_default_background=False):
-        
+        total_steps = len(mesh["meshes"]) + len(lighting) + (4 if add_default_background else 0) + 3 # 3 extra steps for setup, scene generation, and h5 conversion
+        pbar = comfy.utils.ProgressBar(total_steps)
+
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             
@@ -513,8 +510,9 @@ class RenderFormerSceneBuilder:
                     }
                 ]
             }
+            pbar.update(1)
 
-            # Process each mesh from the PH_MESH input
+            # Process each mesh from the MESH input
             for i, (mesh_obj, material, transform) in enumerate(zip(mesh["meshes"], mesh["materials"], mesh["transforms"])):
                 obj_key = f"main_object_{i}"
                 temp_mesh_path = tmpdir_path / f"{obj_key}.obj"
@@ -539,8 +537,9 @@ class RenderFormerSceneBuilder:
                         "rand_tri_diffuse_seed": None
                     }
                 }
+                pbar.update(1)
 
-            # Process each light from the RENDERFORMER_LIGHTING input list
+            # Process each light from the LIGHTING input list
             if lighting and isinstance(lighting, list):
                 for i, light_def in enumerate(lighting):
                     obj_key = f"comfy_light_{i}"
@@ -549,9 +548,20 @@ class RenderFormerSceneBuilder:
                         "transform": light_def["transform"],
                         "material": light_def["material"]
                     }
+                    pbar.update(1)
             
-            if add_default_background:
-                background_files = ["plane.obj", "wall0.obj", "wall1.obj", "wall2.obj"]
+            # Check if a background mesh has already been added by the user
+            background_files = ["plane.obj", "wall0.obj", "wall1.obj", "wall2.obj"]
+            user_has_background = False
+            for mesh_obj in mesh["meshes"]:
+                # This is a heuristic: we check if the mesh's file path (if available)
+                # contains one of the background file names. This is not foolproof.
+                if hasattr(mesh_obj, 'metadata') and 'file_path' in mesh_obj.metadata:
+                    if any(bg_file in mesh_obj.metadata['file_path'] for bg_file in background_files):
+                        user_has_background = True
+                        break
+            
+            if add_default_background and not user_has_background:
                 for i, bg_file in enumerate(background_files):
                     obj_key = f"comfy_default_background_{i}"
                     config_data["objects"][obj_key] = {
@@ -567,6 +577,7 @@ class RenderFormerSceneBuilder:
                             "rand_tri_diffuse_seed": None
                         }
                     }
+                    pbar.update(1)
 
             # 4. Use the same processing pipeline as RenderFormerFromJSON
             # This is a simplified version of the logic in RenderFormerFromJSON
@@ -620,6 +631,7 @@ class RenderFormerSceneBuilder:
                     temp_mesh_dir_name = "temp_mesh_dir"
                     
                     generate_scene_mesh(scene_config, f"{temp_mesh_dir_name}/scene.obj", str(scene_config_dir))
+                    pbar.update(1)
 
                     def patched_save_to_h5(scene_config, mesh_path, output_h5_buffer):
                         all_triangles, all_vn, all_texture = [], [], []
@@ -669,6 +681,7 @@ class RenderFormerSceneBuilder:
                             f.create_dataset("fov", data=all_fov.astype(np.float32), compression="gzip", compression_opts=9)
 
                     patched_save_to_h5(scene_config, f"{temp_mesh_dir_name}/scene.obj", h5_buffer)
+                    pbar.update(1)
 
                     h5_buffer.seek(0)
                     with h5py.File(h5_buffer, 'r') as f:
@@ -693,20 +706,20 @@ class RenderFormerMeshCombine:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "mesh_1": ("PH_MESH",),
+                "mesh_1": ("MESH",),
             },
             "optional": {
-                "mesh_2": ("PH_MESH",),
-                "mesh_3": ("PH_MESH",),
-                "mesh_4": ("PH_MESH",),
-                "mesh_5": ("PH_MESH",),
-                "mesh_6": ("PH_MESH",),
-                "mesh_7": ("PH_MESH",),
-                "mesh_8": ("PH_MESH",),
+                "mesh_2": ("MESH",),
+                "mesh_3": ("MESH",),
+                "mesh_4": ("MESH",),
+                "mesh_5": ("MESH",),
+                "mesh_6": ("MESH",),
+                "mesh_7": ("MESH",),
+                "mesh_8": ("MESH",),
             }
         }
 
-    RETURN_TYPES = ("PH_MESH",)
+    RETURN_TYPES = ("MESH",)
     FUNCTION = "combine_meshes"
     CATEGORY = "PHRenderFormer"
 
@@ -722,11 +735,11 @@ class RenderFormerMeshCombine:
         
         # Add subsequent meshes and materials from optional inputs
         for key in sorted(kwargs.keys()):
-            ph_mesh = kwargs.get(key)
-            if ph_mesh and isinstance(ph_mesh, dict) and "meshes" in ph_mesh and "materials" in ph_mesh and "transforms" in ph_mesh:
-                all_meshes.extend(ph_mesh["meshes"])
-                all_materials.extend(ph_mesh["materials"])
-                all_transforms.extend(ph_mesh["transforms"])
+            mesh = kwargs.get(key)
+            if mesh and isinstance(mesh, dict) and "meshes" in mesh and "materials" in mesh and "transforms" in mesh:
+                all_meshes.extend(mesh["meshes"])
+                all_materials.extend(mesh["materials"])
+                all_transforms.extend(mesh["transforms"])
         
         combined_ph_mesh = {"meshes": all_meshes, "materials": all_materials, "transforms": all_transforms}
 
@@ -737,20 +750,22 @@ class RenderFormerVideoSceneBuilder:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "mesh": ("PH_MESH",),
-                "camera_sequence": ("RENDERFORMER_CAMERA_SEQUENCE",),
-                "lighting": ("RENDERFORMER_LIGHTING",),
+                "mesh": ("MESH",),
+                "camera_sequence": ("CAMERA_SEQUENCE",),
+                "lighting": ("LIGHTING",),
             },
             "optional": {
                 "add_default_background": ("BOOLEAN", {"default": False}),
             }
         }
 
-    RETURN_TYPES = ("RENDERFORMER_SCENE_SEQUENCE",)
+    RETURN_TYPES = ("SCENE_SEQUENCE",)
     FUNCTION = "build_video_scene"
     CATEGORY = "PHRenderFormer"
 
     def build_video_scene(self, mesh, camera_sequence, lighting, add_default_background=False):
+        total_steps = len(camera_sequence)
+        pbar = comfy.utils.ProgressBar(total_steps)
         scene_sequence = []
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
@@ -798,9 +813,9 @@ class RenderFormerVideoSceneBuilder:
                     # Define a default material and then update it with the provided one.
                     # This ensures all required keys are present for dacite.
                     final_material = {
-                        "diffuse": [0.8, 0.8, 0.8], 
+                        "diffuse": [0.8, 0.8, 0.8],
                         "specular": [0.1, 0.1, 0.1],
-                        "roughness": 0.7, 
+                        "roughness": 0.7,
                         "emissive": [0.0, 0.0, 0.0],
                         "smooth_shading": True,
                         "rand_tri_diffuse_seed": None
@@ -935,9 +950,12 @@ class RenderFormerVideoSceneBuilder:
                                 'fov': torch.from_numpy(fov_data).unsqueeze(0).unsqueeze(-1),
                             }
                             scene_sequence.append(scene)
+                except Exception as e:
+                    print(f"Error processing frame: {e}")
                 finally:
                     trimesh.load = original_load
                     trimesh.exchange.export.export_mesh = original_export
+                pbar.update(1)
         
         return (scene_sequence,)
 
@@ -950,7 +968,7 @@ class RenderFormerGenerator:
         return {
             "required": {
                 "model": ("MODEL",),
-                "scene": ("RENDERFORMER_SCENE",),
+                "scene": ("SCENE",),
                 "resolution": ("INT", {"default": 512, "min": 64, "max": 4096, "step": 64}),
                 "tone_mapper": (["none", "agx", "filmic", "pbr_neutral"], {"default": "agx"}),
             }
@@ -961,10 +979,12 @@ class RenderFormerGenerator:
     CATEGORY = "PHRenderFormer"
 
     def generate(self, model, scene, resolution, tone_mapper):
+        pbar = comfy.utils.ProgressBar(4)
         device = mm.get_torch_device()
 
         pipeline = model["pipeline"]
         torch_dtype = model["torch_dtype"]
+        pbar.update(1)
 
         # Create a shallow copy of the scene to avoid modifying the original cache
         scene_on_device = scene.copy()
@@ -972,6 +992,7 @@ class RenderFormerGenerator:
         # Move all scene tensors to the correct device
         for key, tensor in scene_on_device.items():
             scene_on_device[key] = tensor.to(device)
+        pbar.update(1)
 
         rendered_imgs = pipeline(
             triangles=scene_on_device['triangles'],
@@ -983,6 +1004,7 @@ class RenderFormerGenerator:
             resolution=resolution,
             torch_dtype=torch_dtype,
         )
+        pbar.update(1)
 
         # Process the output image
         # Manually apply log decoding to expand the value range
@@ -1003,6 +1025,7 @@ class RenderFormerGenerator:
         
         # Convert to torch tensor for ComfyUI
         ldr_img_tensor = torch.from_numpy(ldr_img).unsqueeze(0)
+        pbar.update(1)
 
         return (ldr_img_tensor,)
 
@@ -1012,7 +1035,7 @@ class PHRenderFormerVideoSampler:
         return {
             "required": {
                 "model": ("MODEL",),
-                "scene_sequence": ("RENDERFORMER_SCENE_SEQUENCE",),
+                "scene_sequence": ("SCENE_SEQUENCE",),
                 "resolution": ("INT", {"default": 512, "min": 64, "max": 4096, "step": 64}),
                 "tone_mapper": (["none", "agx", "filmic", "pbr_neutral"], {"default": "agx"}),
             }
@@ -1023,6 +1046,7 @@ class PHRenderFormerVideoSampler:
     CATEGORY = "PHRenderFormer"
 
     def generate_frames(self, model, scene_sequence, resolution, tone_mapper):
+        pbar = comfy.utils.ProgressBar(len(scene_sequence))
         device = mm.get_torch_device()
         pipeline = model["pipeline"]
         torch_dtype = model["torch_dtype"]
@@ -1058,6 +1082,7 @@ class PHRenderFormerVideoSampler:
                 ldr_img = np.clip(hdr_img, 0, 1)
             
             frames.append(ldr_img)
+            pbar.update(1)
 
         frames_tensor = torch.from_numpy(np.array(frames).astype(np.float32))
         
@@ -1081,7 +1106,7 @@ class LoadRenderFormerExampleScene:
             }
         }
 
-    RETURN_TYPES = ("RENDERFORMER_SCENE",)
+    RETURN_TYPES = ("SCENE",)
     FUNCTION = "load_example_scene"
     CATEGORY = "PHRenderFormer/Test"
 
@@ -1472,7 +1497,7 @@ class RenderFormerFromJSON:
             }
         }
 
-    RETURN_TYPES = ("RENDERFORMER_SCENE",)
+    RETURN_TYPES = ("SCENE",)
     FUNCTION = "load_from_json"
     CATEGORY = "PHRenderFormer"
 

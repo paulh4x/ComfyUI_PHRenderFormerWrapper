@@ -56,6 +56,31 @@ function rgbStringToRgb(rgbStr) {
 app.registerExtension({
     name: "Comfy.RenderFormer.Nodes",
     async nodeCreated(node) {
+        const node_names = [
+            "RenderFormerModelLoader",
+            "RenderFormerCamera",
+            "PHRenderFormerCameraTarget",
+            "RenderFormerLighting",
+            "RenderFormerSceneBuilder",
+            "RenderFormerVideoSceneBuilder",
+            "RenderFormerGenerator",
+            "PHRenderFormerVideoSampler",
+            "LoadMesh",
+            "RemeshMesh",
+            "RandomizeColors",
+            "LoadRenderFormerExampleScene",
+            "RenderFormerFromJSON",
+            "RenderFormerMeshCombine",
+            "RenderFormerLightingCombine",
+        ];
+
+        if (node_names.includes(node.comfyClass)) {
+            const HEADER_COLOR = "#FDC501"; // yellow
+            const BG_COLOR = "#111417"; // anthrazit
+            node.color = HEADER_COLOR;
+            node.bgcolor = BG_COLOR;
+        }
+        
         // -- PHRenderFormer Mesh Loader Node --
         if (node.comfyClass === "LoadMesh") {
             // 1. Add File Upload Widget
