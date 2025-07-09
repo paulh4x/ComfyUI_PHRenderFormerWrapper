@@ -41,6 +41,7 @@ This project is under active development. Here is a summary of the progress so f
 
 #### 📋 To Do
 
+-   [ ] **Mesh Format Support:** Add support for loading `.glb` and `.fbx` files, including their materials and textures.
 -   [ ] **Target Animation Nodes:** Implement animation capabilities for `MESH` and `LIGHT` properties, not just the camera.
 -   [ ] **Camera Adoption:** Integrate with the `Load 3D` core node to adopt its camera transformations.
 -   [ ] **Randomize Color Fix:** Investigate and fix the `RandomizeColors` node, which is not producing the expected visual output.
