@@ -4,6 +4,7 @@
 
 ![WIP Screenshot 1](assets/img/phrenderformer_wip_00.png)
 ![WIP Screenshot 2](assets/img/phrenderformer_wip_01.png)
+![WIP Screenshot 3](assets/img/phrenderformer_wip_02.png)
 ![Resolution Comparison](assets/img/phrenderformer_wip_res_compare.jpg)
 
 This repository contains a set of custom nodes for ComfyUI that provide a wrapper for Microsoft's **RenderFormer** model. It allows you to render complex 3D scenes with physically-based materials and global illumination directly within the ComfyUI interface.
@@ -123,6 +124,7 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 ### Version History
 
 #### Version 0.4 Beta Test - UI/UX and Workflow Enhancements
+-   **Examples:** added example workflows for ComfyUI.
 -   **UI/UX:** All nodes now have custom colors for better visual organization in the graph. The header is yellow (`#FDC501`) and the body is anthracite (`#111417`).
 -   **UI/UX:** Added progress bars to all long-running nodes (`SceneBuilder`, `VideoSceneBuilder`, `Sampler`, `VideoSampler`, `Remesh`) to provide real-time feedback.
 -   **Workflow:** The `Remesh` node now processes all meshes in a list, not just the first one.
