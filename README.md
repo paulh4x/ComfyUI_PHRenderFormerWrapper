@@ -122,7 +122,7 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 
 ### Version History
 
-#### Beta Test - UI/UX and Workflow Enhancements
+#### Version 0.4 Beta Test - UI/UX and Workflow Enhancements
 -   **UI/UX:** All nodes now have custom colors for better visual organization in the graph. The header is yellow (`#FDC501`) and the body is anthracite (`#111417`).
 -   **UI/UX:** Added progress bars to all long-running nodes (`SceneBuilder`, `VideoSceneBuilder`, `Sampler`, `VideoSampler`, `Remesh`) to provide real-time feedback.
 -   **Workflow:** The `Remesh` node now processes all meshes in a list, not just the first one.
