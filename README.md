@@ -24,7 +24,6 @@ This repository contains a set of custom nodes for ComfyUI that provide a wrappe
 -   **🔧 Advanced Mesh Processing:** Includes nodes for loading, combining, remeshing, and applying simple color randomization to your 3D assets.
 -   **💡 Lighting and Material Control:** Easily add and combine multiple light sources and control PBR material properties like diffuse, specular, roughness, and emission.
 -   **↔️ Full Transformation Control:** Apply translation, rotation, and scaling to objects within the scene.
--   **⚡ In-Memory Processing:** The entire scene preparation pipeline, from loading meshes to generating the final HDF5 data for the model, is handled in-memory to maximize speed and avoid disk I/O.
 
 ---
 
@@ -42,16 +41,17 @@ This project is under active development. Here is a summary of the progress so f
 #### ✅ Done
 
 -   **Core Rendering Pipeline:** All essential nodes for building and rendering a static 3D scene are implemented.
--   **In-Memory Processing:** The entire scene preparation pipeline is handled in-memory to maximize speed.
+-   **In-Memory Processing:** Partitial scene preparation pipeline is handled in-memory to maximize speed.
 -   **Video Rendering:** A complete, dedicated workflow for video rendering is in place.
 -   **Advanced Utilities:** Nodes for mesh combination, remeshing, and JSON-based scene loading are functional.
 -   **Custom UI Elements:** The nodes feature custom colors for better visual organization, and progress bars are implemented for long-running operations.
 -   **Bug Fixes:** Addressed various bugs related to file handling, data types, and temporary file management.
 -   **Proper RGB Values for diffuse Color:** Colorpicker support for white-values for more variety of colors including.
--   **Randomize Color Fix:** Fixed `RandomizeColors` node, which is now producing the expected visual output.
 
 #### 📋 To Do
 
+-   [ ] **Randomize Color Fix:** Fix `RandomizeColors` node, will produce the expected visual output.
+-   [ ] **⚡ In-Memory Processing:** Fix entire scene preparation pipeline, from loading meshes to generating the final HDF5 data for the model, should be handled in-memory to maximize speed and avoid disk I/O.
 -   [ ] **Camera Animation:** Fix flickering in animations especially for objects with high glossy materials.
 -   [ ] **Mesh Format Support:** Add support for loading `.glb` and `.fbx` files, including their materials and textures.
 -   [ ] **Target Animation Nodes:** Implement animation capabilities for `MESH` and `LIGHT` properties, not just the camera.
