@@ -92,6 +92,11 @@ This project is under active development. Here is a summary of the progress so f
     ```bash
     pip install -r requirements.txt
     ```
+> [!IMPORTANT]
+> For owners of a **NVIDIA 50xx series GPU**, a dedicated requirements file is available. Please use the following command instead:
+> ```bash
+> pip install -r requirements_50xx.txt
+> ```
 6.  RenderFormer requires an additional plugin for handling HDR image formats. Run the following command to download it:
     ```bash
     python -c "import imageio; imageio.plugins.freeimage.download()"
@@ -115,7 +120,6 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 #### Video & Animation
 -   **PHRenderFormer Camera Target**: Creates a camera animation sequence by interpolating between a start and end camera state (position, look-at, FOV).
 -   **PHRenderFormer Video Scene Builder**: Assembles a sequence of scenes, one for each frame of a camera animation.
--   **PHRenderFormer Video Sampler**: Renders a sequence of scenes and outputs the frames as an image batch, ready to be connected to a "Save Video" node.
 
 #### Scene Components
 -   **PHRenderFormer Mesh Loader**: Loads a 3D mesh file (e.g., `.obj`, `.glb`). Includes a file upload button and serves as the primary node for defining an object's material and transformation.

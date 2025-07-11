@@ -987,66 +987,6 @@ class RenderFormerGenerator:
         else:
             return (torch.empty(0), torch.empty(0))
 
-class RenderFormerVideoSampler:
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "model": ("MODEL",),
-                "scene_sequence": ("SCENE_SEQUENCE",),
-                "resolution": ("INT", {"default": 512, "min": 64, "max": 4096, "step": 64}),
-                "tone_mapper": (["none", "agx", "filmic", "pbr_neutral"], {"default": "agx"}),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "generate_frames"
-    CATEGORY = "PHRenderFormer"
-
-    def generate_frames(self, model, scene_sequence, resolution, tone_mapper):
-        pbar = comfy.utils.ProgressBar(len(scene_sequence))
-        device = mm.get_torch_device()
-        pipeline = model["pipeline"]
-        torch_dtype = model["torch_dtype"]
-
-        frames = []
-        for scene in scene_sequence:
-            scene_on_device = scene.copy()
-            for key, tensor in scene_on_device.items():
-                scene_on_device[key] = tensor.to(device)
-
-            rendered_imgs = pipeline(
-                triangles=scene_on_device['triangles'],
-                texture=scene_on_device['texture'],
-                mask=scene_on_device['mask'],
-                vn=scene_on_device['vn'],
-                c2w=scene_on_device['c2w'],
-                fov=scene_on_device['fov'],
-                resolution=resolution,
-                torch_dtype=torch_dtype,
-            )
-
-            rendered_imgs = torch.pow(10., rendered_imgs) - 1.
-            hdr_img_tensor = rendered_imgs[0, 0].cpu()
-            hdr_img = hdr_img_tensor.numpy().astype(np.float32)
-
-            if tone_mapper != 'none':
-                from simple_ocio import ToneMapper
-                if tone_mapper == 'pbr_neutral':
-                    tone_mapper = 'Khronos PBR Neutral'
-                tm = ToneMapper(tone_mapper)
-                ldr_img = tm.hdr_to_ldr(hdr_img)
-            else:
-                ldr_img = np.clip(hdr_img, 0, 1)
-            
-            frames.append(ldr_img)
-            pbar.update(1)
-
-        frames_tensor = torch.from_numpy(np.array(frames).astype(np.float32))
-        
-        return (frames_tensor,)
-
-
 class RenderFormerExampleScene:
     """
     Loads an example scene from the RenderFormer examples directory.
@@ -1664,7 +1604,6 @@ NODE_CLASS_MAPPINGS = {
     "RenderFormerLighting": RenderFormerLighting,
     "RenderFormerSceneBuilder": RenderFormerSceneBuilder,
     "RenderFormerGenerator": RenderFormerGenerator,
-    "RenderFormerVideoSampler": RenderFormerVideoSampler,
     "RenderFormerLoadMesh": RenderFormerLoadMesh,
     "RenderFormerRemeshMesh": RenderFormerRemeshMesh,
     "RenderFormerRandomizeColors": RenderFormerRandomizeColors,
@@ -1681,7 +1620,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "RenderFormerLighting": "RenderFormer Lighting",
     "RenderFormerSceneBuilder": "RenderFormer Scene Builder",
     "RenderFormerGenerator": "RenderFormer Sampler",
-    "RenderFormerVideoSampler": "RenderFormer Video Sampler",
     "RenderFormerLoadMesh": "RenderFormer Mesh Loader",
     "RenderFormerRemeshMesh": "RenderFormer Remesh",
     "RenderFormerRandomizeColors": "RenderFormer Random Colors",
