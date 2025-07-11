@@ -77,16 +77,17 @@ app.registerExtension({
         const node_names = [
             "RenderFormerModelLoader",
             "RenderFormerCamera",
-            "PHRenderFormerCameraTarget",
+            "RenderFormerCameraTarget",
             "RenderFormerLighting",
             "RenderFormerSceneBuilder",
             "RenderFormerVideoSceneBuilder",
             "RenderFormerGenerator",
-            "PHRenderFormerVideoSampler",
-            "LoadMesh",
-            "RemeshMesh",
-            "RandomizeColors",
-            "LoadRenderFormerExampleScene",
+            "RenderFormerVideoSampler",
+            "RenderFormerVideoSamplerBatched",
+            "RenderFormerLoadMesh",
+            "RenderFormerRemeshMesh",
+            "RenderFormerRandomizeColors",
+            "RenderFormerExampleScene",
             "RenderFormerFromJSON",
             "RenderFormerMeshCombine",
             "RenderFormerLightingCombine",
@@ -100,7 +101,7 @@ app.registerExtension({
         }
         
         // -- PHRenderFormer Mesh Loader Node --
-        if (node.comfyClass === "LoadMesh") {
+        if (node.comfyClass === "RenderFormerLoadMesh") {
             // 1. Add File Upload Widget
             const pathWidget = node.widgets.find((w) => w.name === "mesh");
             const fileInput = document.createElement("input");
@@ -155,7 +156,7 @@ app.registerExtension({
 
             const colorWidget = node.widgets.find(w => w.name === "diffuse_rgb");
             if (!colorWidget) {
-                console.error("PHRenderFormer Mesh Loader: Could not find 'diffuse_rgb' widget!");
+                console.error("RenderFormer Mesh Loader: Could not find 'diffuse_rgb' widget!");
                 return;
             }
 

@@ -7,10 +7,12 @@
 ![WIP Screenshot 3](assets/img/phrenderformer_wip_02.png)
 ![Resolution Comparison](assets/img/phrenderformer_wip_res_compare.jpg)
 
-This repository contains a set of custom nodes for ComfyUI that provide a wrapper for Microsoft's **RenderFormer** model. It allows you to render complex 3D scenes with physically-based materials and global illumination directly within the ComfyUI interface.
+This repository contains a set of custom nodes for ComfyUI that provide a wrapper for Microsoft's **RenderFormer** model. It allows you to render complex 3D scenes (see **Limits**) with physically-based materials and global illumination directly within the ComfyUI interface.
+
+
 
 > [!WARNING]
-> **WORK IN PROGRESS & HELLO WORLD:** This project is my first "hello world" in contributing code of any kind and is currently under active development. It should be considered experimental. I do not take responsibility if this breaks anything and do not plan to provide official support for it.
+> **WORK IN PROGRESS & HELLO WORLD:** This project is my first "hello world" in contributing code of any kind and is currently under active development. It should be considered experimental. The model is in a very early stage and may be further developed later. I do not take responsibility if this breaks anything and do not plan to provide official support for it.
 
 ---
 
@@ -26,6 +28,13 @@ This repository contains a set of custom nodes for ComfyUI that provide a wrappe
 
 ---
 
+### 🧱 Model Limits
+
+-   **Meshes:** RenderFormer can handle scenes of up to 8192 polygons.
+-   **Lights:** Up to 8 lightsources can be combined for lighting, emission color is for now limited to rgb 255, 255, 255 (white).
+-   **Resolution:** Best tested resolutions for now are between 512 x 512 to 1024 x 1024 pixels. The model can produce resolutions up to 2048 x 2048 pixel, quality of outputs decrease with higher resolutions (see comparison img).
+-   **Animations:** Due to slightly varying precision in each frame rendered, camera animations for now contain some flickering, especially with high reflective materials.
+
 ### 📝 Progress & To-Do
 
 This project is under active development. Here is a summary of the progress so far and the features planned for the future.
@@ -39,13 +48,14 @@ This project is under active development. Here is a summary of the progress so f
 -   **Custom UI Elements:** The nodes feature custom colors for better visual organization, and progress bars are implemented for long-running operations.
 -   **Bug Fixes:** Addressed various bugs related to file handling, data types, and temporary file management.
 -   **Proper RGB Values for diffuse Color:** Colorpicker support for white-values for more variety of colors including.
+-   **Randomize Color Fix:** Fixed `RandomizeColors` node, which is now producing the expected visual output.
 
 #### 📋 To Do
 
+-   [ ] **Camera Animation:** Fix flickering in animations especially for objects with high glossy materials.
 -   [ ] **Mesh Format Support:** Add support for loading `.glb` and `.fbx` files, including their materials and textures.
 -   [ ] **Target Animation Nodes:** Implement animation capabilities for `MESH` and `LIGHT` properties, not just the camera.
 -   [ ] **Camera Adoption:** Integrate with the `Load 3D` core node to adopt its camera transformations.
--   [ ] **Randomize Color Fix:** Investigate and fix the `RandomizeColors` node, which is not producing the expected visual output.
 -   [ ] **Material Presets:** Create a system for saving and loading material presets.
 -   [ ] **Public Release:** Prepare for a more stable, public release with better documentation and examples.
 
@@ -124,6 +134,14 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 ---
 
 ### Version History
+
+#### Version 0.2.5 - Node Consolidation and Workflow Simplification
+-   **Workflow:** Merged the `RenderFormerVideoSamplerBatched` into the main `RenderFormerGenerator` (now `RenderFormer Sampler`). The sampler now intelligently handles both single images and video sequences, with an optional `IMAGES` output.
+-   **Workflow:** Merged the `RenderFormerVideoSceneBuilder` into the main `RenderFormerSceneBuilder`. The node now accepts both a single `CAMERA` and a `CAMERA_SEQUENCE`, with optional `SCENE` and `SCENE_SEQUENCE` outputs.
+-   **Fix:** Resolved a critical `AttributeError` in the `RenderFormerSceneBuilder` caused by a missing helper method after the node merge.
+-   **Fix:** Removed hardcoded material properties for background meshes in the `RenderFormerLoadMesh` node, ensuring that materials are always controlled by the node's inputs.
+-   **UI/UX:** Added a colored startup message with an ASCII logo to provide clear feedback on whether the nodes loaded successfully.
+-   **UI/UX:** Fixed a `SyntaxWarning` related to escape sequences in the startup message.
 
 #### Version 0.4 Beta Test - UI/UX and Workflow Enhancements
 -   **Examples:** added example workflows for ComfyUI.
