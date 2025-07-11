@@ -70,6 +70,75 @@ For video, the workflow is similar. You would use a `RenderFormer Camera Target`
 
 ---
 
+### 🚀 Advanced Usage: Building Complex Scenes & Animations
+
+For more complex projects, you can combine multiple meshes and create camera animations. The `ph_renderformer_advanced_01.json` workflow demonstrates this by building a scene with several objects and animating the camera.
+
+```mermaid
+graph TD
+    subgraph "Step 1: Load Model"
+        A["RenderFormer Model Loader"]
+    end
+
+    subgraph "Step 2: Define Scene Elements"
+        subgraph "Compose Meshes"
+            B1["Mesh 1 (Main Object)"] --> C["Mesh Combine"]
+            B2["Mesh 2 (Fox)"] --> C
+            B3["Mesh 3 (Spheres)"] --> C
+            B4["Mesh 4 (Background Walls)"] --> C
+        end
+
+        subgraph "Animate Camera"
+            D1["RenderFormer Camera (Start)"] --> D2["RenderFormer Camera Target (End)"]
+        end
+        
+        E["RenderFormer Lighting"]
+    end
+
+    subgraph "Step 3: Build Scene Sequence"
+        C --> F["RenderFormer Scene Builder"]
+        D2 -- CAMERA_SEQUENCE --> F
+        E --> F
+    end
+
+    subgraph "Step 4: Render (Sample)"
+        A --> G["RenderFormer Sampler"]
+        F -- SCENE_SEQUENCE --> G
+    end
+
+    subgraph "Step 5: Create & Save Video"
+        G -- IMAGES --> H["Create Video"]
+        H --> I["Save Video"]
+    end
+
+    style A fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style B1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style B2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style B3 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style B4 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style C fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style D1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style D2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style E fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style F fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style G fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style H fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
+    style I fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
+```
+
+1.  **Compose Your Scene**: Instead of using one large model, you can load multiple `RenderFormer Mesh Loader` nodes for different parts of your scene (e.g., characters, props, background elements).
+2.  **Combine Meshes**: Use one or more `RenderFormer Mesh Combine` nodes to merge all your individual meshes into a single `MESH` output. This creates a clean, organized workflow and makes it easy to manage complex scenes.
+3.  **Animate the Camera**:
+    *   Define the starting view with a `RenderFormer Camera` node.
+    *   Connect its `CAMERA` output to the `start_camera` input of a `RenderFormer Camera Target` node.
+    *   In the `Camera Target` node, define the end position, look-at point, and FOV for your animation, along with the total number of frames. This generates a `CAMERA_SEQUENCE`.
+4.  **Build the Scene Sequence**: Connect your combined `MESH`, the `CAMERA_SEQUENCE`, and your `LIGHTING` to the `RenderFormer Scene Builder`. It will automatically create a sequence of scenes, one for each frame of the animation.
+5.  **Render and Save**:
+    *   The `RenderFormer Sampler` will receive the `SCENE_SEQUENCE` and render all frames, outputting them as an `IMAGES` batch.
+    *   Connect this batch to a `Create Video` node (or another video-handling node) and then to a `Save Video` node to get your final animation file.
+
+---
+
 ### 🚀 Features
 
 -   **🎨 End-to-End Rendering:** Load 3D models, define materials, set up cameras, and render—all within ComfyUI.
