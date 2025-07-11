@@ -147,7 +147,7 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 -   **UI/UX:** Added a colored startup message with an ASCII logo to provide clear feedback on whether the nodes loaded successfully.
 -   **UI/UX:** Fixed a `SyntaxWarning` related to escape sequences in the startup message.
 
-#### Version 0.4 Beta Test - UI/UX and Workflow Enhancements
+#### Version 0.2.21 Beta Test - UI/UX and Workflow Enhancements
 -   **Examples:** added example workflows for ComfyUI.
 -   **UI/UX:** All nodes now have custom colors for better visual organization in the graph. The header is yellow (`#FDC501`) and the body is anthracite (`#111417`).
 -   **UI/UX:** Added progress bars to all long-running nodes (`SceneBuilder`, `VideoSceneBuilder`, `Sampler`, `VideoSampler`, `Remesh`) to provide real-time feedback.
@@ -155,18 +155,18 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 -   **Workflow:** The `SceneBuilder` nodes will no longer add the default background if a background mesh has already been loaded manually, preventing duplicates.
 -   **Input Precision:** The `emissive_strength` input on the `Lighting` node now has a smaller step value for finer control.
 
-#### Version 0.3 - Video Rendering and Stability
+#### Version 0.1.9 - Video Rendering and Stability
 -   **Feature:** Added a complete, dedicated workflow for video rendering (`Camera Target`, `Video Scene Builder`, `Video Sampler`).
 -   **Fix:** Resolved a `dacite.exceptions.MissingValueError` in the video scene builder.
 -   **Fix:** Addressed `TypeError` and `FileNotFoundError` bugs related to temporary file handling in the video pipeline.
 -   **Change:** Separated single-image and video workflows for improved stability and clarity.
 
-#### Version 0.2 - Refinements and Fixes
+#### Version 0.1.5 - Refinements and Fixes
 -   **Feature:** The `LoadMesh` node now has a `RENDERFORMER_MATERIAL` output, allowing material properties to be shared.
 -   **Feature:** Added default transformations for specific background meshes from the official examples.
 -   **Change:** Increased input precision for rotation and scale transformations.
 
-#### Version 0.1 - Initial Development
+#### Version 0.1.0 - Initial Development
 -   **Feature:** Established the core rendering pipeline and all essential nodes for building and rendering a static 3D scene.
 -   **Feature:** Implemented in-memory scene processing to patch `trimesh` and `h5py`, avoiding slow disk I/O.
 -   **Feature:** Added advanced utility nodes like `RemeshMesh`, `RandomizeColors`, and `FromJSON`.
