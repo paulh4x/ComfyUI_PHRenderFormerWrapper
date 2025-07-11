@@ -16,6 +16,60 @@ This repository contains a set of custom nodes for ComfyUI that provide a wrappe
 
 ---
 
+### 💡 Usage
+
+This node pack follows a standard 3D rendering pipeline. The basic workflow, as seen in the `ph_renderformer_basic_01.json` example, can be broken down into the following steps:
+
+```mermaid
+graph TD
+    subgraph "Step 1: Load Model"
+        A["RenderFormer Model Loader"]
+    end
+
+    subgraph "Step 2: Define Scene Elements"
+        B["RenderFormer Mesh Loader"] --> C["RenderFormer Random Colors"]
+        D["RenderFormer Camera"]
+        E["RenderFormer Lighting"]
+    end
+
+    subgraph "Step 3: Build Scene"
+        C --> F["RenderFormer Scene Builder"]
+        D --> F
+        E --> F
+    end
+
+    subgraph "Step 4: Render (Sample)"
+        A --> G["RenderFormer Sampler"]
+        F --> G
+    end
+
+    subgraph "Step 5: Save Output"
+        G --> H["Save Image"]
+    end
+
+    style A fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style B fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style C fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style D fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style E fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style F fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style G fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style H fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
+```
+
+1.  **Load Model**: Start by loading the `RenderFormer Model Loader`. This node downloads the specified model from Hugging Face and prepares it for the pipeline.
+2.  **Define Scene Elements**:
+    *   **Mesh**: Use the `RenderFormer Mesh Loader` to load your 3D model (e.g., an `.obj` file). Here, you can also set its transformation (translation, rotation, scale) and define its core material properties. In the example, the output is passed to `RenderFormer Random Colors` for a creative effect.
+    *   **Camera**: Add a `RenderFormer Camera` to define the viewpoint, target, and field of view.
+    *   **Lighting**: Use the `RenderFormer Lighting` node to create one or more light sources. You can combine multiple lights with the `RenderFormer Lighting Combine` node.
+3.  **Build Scene**: Connect the `MESH`, `CAMERA`, and `LIGHTING` outputs into the `RenderFormer Scene Builder`. This node collects all the components and assembles the final scene data that the model will render. You can also choose to add a default background plane and walls here.
+4.  **Render (Sample)**: The `RenderFormer Sampler` takes the `MODEL` and the `SCENE` as input. It performs the actual rendering operation and outputs the final image.
+5.  **Save Output**: Connect the `IMAGE` output from the sampler to a `Save Image` node to save the result.
+
+For video, the workflow is similar. You would use a `RenderFormer Camera Target` to create a `CAMERA_SEQUENCE`, which then goes into the `RenderFormer Scene Builder`. The `RenderFormer Sampler` will automatically detect the sequence and output an image batch (`IMAGES`) ready for a video-saving node.
+
+---
+
 ### 🚀 Features
 
 -   **🎨 End-to-End Rendering:** Load 3D models, define materials, set up cameras, and render—all within ComfyUI.
@@ -61,7 +115,7 @@ This project is under active development. Here is a summary of the progress so f
 
 ---
 
-### ️ Installation
+### 🛠️ Installation
 
 #### Prerequisites
 
@@ -113,31 +167,31 @@ This project is under active development. Here is a summary of the progress so f
 This wrapper provides a comprehensive set of nodes to build 3D scenes.
 
 #### Core Pipeline
--   **PHRenderFormer Model Loader**: Loads a specified RenderFormer model from Hugging Face or a local path.
--   **PHRenderFormer Scene Builder**: Assembles a final scene for single-image rendering from meshes, a camera, materials, and lighting.
--   **PHRenderFormer Sampler**: Executes the RenderFormer pipeline on an assembled scene to produce the final rendered image.
-
-#### Video & Animation
--   **PHRenderFormer Camera Target**: Creates a camera animation sequence by interpolating between a start and end camera state (position, look-at, FOV).
--   **PHRenderFormer Video Scene Builder**: Assembles a sequence of scenes, one for each frame of a camera animation.
+-   **RenderFormer Model Loader**: Loads a specified RenderFormer model from Hugging Face or a local path.
+-   **RenderFormer Scene Builder**: Assembles a scene from meshes, lighting, and camera inputs. It can handle both single camera inputs for static images and camera sequences for creating animations.
+-   **RenderFormer Sampler**: Executes the RenderFormer pipeline on a scene or a sequence of scenes. It intelligently handles both single images and image batches for video, producing the final rendered output.
 
 #### Scene Components
--   **PHRenderFormer Mesh Loader**: Loads a 3D mesh file (e.g., `.obj`, `.glb`). Includes a file upload button and serves as the primary node for defining an object's material and transformation.
--   **PHRenderFormer Camera**: Defines the camera's position, look-at target, and field of view (FOV).
--   **PHRenderFormer Material**: Defines the PBR material properties for a mesh. The diffuse color can be set using an interactive, canvas-based color picker.
--   **PHRenderFormer Lighting**: Creates a configurable emissive light source.
+-   **RenderFormer Mesh Loader**: Loads a 3D mesh file (e.g., `.obj`, `.glb`). This node is also used to define an object's material properties and transformations.
+-   **RenderFormer Camera**: Defines the camera's position, look-at target, and field of view (FOV).
+-   **RenderFormer Lighting**: Creates a configurable emissive light source.
 
-#### Utilities & Advanced
--   **PHRenderFormer Mesh Combine**: Combines multiple `PH_MESH` outputs into a single object list.
--   **PHRenderFormer Lighting Combine**: Combines multiple light sources into a single list for the scene builder.
--   **PHRenderFormer Remesh**: Simplifies the geometry of a mesh to a target face count using `pymeshlab`.
--   **PHRenderFormer Random Colors**: Applies random vertex colors to a mesh for creative effects or debugging.
--   **PHRenderFormer From JSON**: Loads a scene from a JSON definition, allowing for more complex and customized setups based on the original RenderFormer format.
--   **PHRenderFormer Example Scene**: A test node to quickly load one of the official RenderFormer example scenes.
+#### Animation
+-   **RenderFormer Camera Target**: Creates a camera animation sequence by interpolating between a start and end camera state (position, look-at, FOV).
+
+#### Utilities
+-   **RenderFormer Mesh Combine**: Combines multiple `MESH` outputs into a single object list.
+-   **RenderFormer Lighting Combine**: Combines multiple light sources into a single list for the scene builder.
+-   **RenderFormer Remesh**: Simplifies the geometry of a mesh to a target face count using `pymeshlab`.
+-   **RenderFormer Random Colors**: Applies random vertex colors to a mesh for creative effects or debugging.
+
+#### Advanced & Experimental
+-   **RenderFormer From JSON**: Loads a scene from a JSON definition, allowing for more complex and customized setups based on the original RenderFormer format.
+-   **RenderFormer Example Scene**: A test node to quickly load one of the official RenderFormer example scenes.
 
 ---
 
-### Version History
+### 📜 Version History
 
 #### Version 0.2.5 - Node Consolidation and Workflow Simplification
 -   **Workflow:** Merged the `RenderFormerVideoSamplerBatched` into the main `RenderFormerGenerator` (now `RenderFormer Sampler`). The sampler now intelligently handles both single images and video sequences, with an optional `IMAGES` output.
