@@ -70,9 +70,9 @@ For video, the workflow is similar. You would use a `RenderFormer Camera Target`
 
 ---
 
-### 🚀 Advanced Usage: Building Complex Scenes & Animations
+### 🚀 Advanced Usage: Building Complex Scenes & Multi-Light Animations
 
-For more complex projects, you can combine multiple meshes and create camera animations. The `ph_renderformer_advanced_01.json` workflow demonstrates this by building a scene with several objects and animating the camera.
+For more complex projects, you can combine multiple meshes and create sophisticated camera and lighting animations. The `ph_renderformer_advanced_01.json` workflow demonstrates this by building a scene with several object groups and animating multiple lights simultaneously.
 
 ```mermaid
 graph TD
@@ -82,28 +82,34 @@ graph TD
 
     subgraph "Step 2: Define Scene Elements"
         subgraph "Compose Meshes"
-            B1["Mesh 1 (Main Object)"] --> C["Mesh Combine"]
-            B2["Mesh 2 (Fox)"] --> C
-            B3["Mesh 3 (Spheres)"] --> C
-            B4["Mesh 4 (Background Walls)"] --> C
+            B1["Mesh Group 1 (e.g., Characters)"] --> C1["Mesh Combine 1"]
+            B2["Mesh Group 2 (e.g., Environment)"] --> C2["Mesh Combine 2"]
+            C1 --> C3["Final Mesh Combine"]
+            C2 --> C3
         end
 
         subgraph "Animate Camera"
             D1["RenderFormer Camera (Start)"] --> D2["RenderFormer Camera Target (End)"]
         end
         
-        E["RenderFormer Lighting"]
+        subgraph "Animate Multiple Lights"
+            L1_Start["Light 1 (Start)"] --> L1_Target["Light 1 Target"]
+            L2_Start["Light 2 (Start)"] --> L2_Target["Light 2 Target"]
+            L1_Target --> LC["Lighting Combine"]
+            L2_Target --> LC
+        end
     end
 
     subgraph "Step 3: Build Scene Sequence"
-        C --> F["RenderFormer Scene Builder"]
-        D2 -- CAMERA_SEQUENCE --> F
-        E --> F
+        A --> F["RenderFormer Scene Builder"]
+        C3 -- MESH --> F
+        D1 -- required CAMERA --> F
+        D2 -- optional CAMERA_SEQUENCE --> F
+        LC -- LIGHTING & LIGHTING_SEQUENCE --> F
     end
 
     subgraph "Step 4: Render (Sample)"
-        A --> G["RenderFormer Sampler"]
-        F -- SCENE_SEQUENCE --> G
+        F -- SCENE_SEQUENCE --> G["RenderFormer Sampler"]
     end
 
     subgraph "Step 5: Create & Save Video"
@@ -114,28 +120,33 @@ graph TD
     style A fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style B1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style B2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style B3 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style B4 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style C fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style C1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style C2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style C3 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style D1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style D2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style E fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style L1_Start fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style L2_Start fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style L1_Target fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style L2_Target fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style LC fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style F fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style G fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style H fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
     style I fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
 ```
 
-1.  **Compose Your Scene**: Instead of using one large model, you can load multiple `RenderFormer Mesh Loader` nodes for different parts of your scene (e.g., characters, props, background elements).
-2.  **Combine Meshes**: Use one or more `RenderFormer Mesh Combine` nodes to merge all your individual meshes into a single `MESH` output. This creates a clean, organized workflow and makes it easy to manage complex scenes.
-3.  **Animate the Camera**:
-    *   Define the starting view with a `RenderFormer Camera` node.
-    *   Connect its `CAMERA` output to the `start_camera` input of a `RenderFormer Camera Target` node.
-    *   In the `Camera Target` node, define the end position, look-at point, and FOV for your animation, along with the total number of frames. This generates a `CAMERA_SEQUENCE`.
-4.  **Build the Scene Sequence**: Connect your combined `MESH`, the `CAMERA_SEQUENCE`, and your `LIGHTING` to the `RenderFormer Scene Builder`. It will automatically create a sequence of scenes, one for each frame of the animation.
-5.  **Render and Save**:
-    *   The `RenderFormer Sampler` will receive the `SCENE_SEQUENCE` and render all frames, outputting them as an `IMAGES` batch.
-    *   Connect this batch to a `Create Video` node (or another video-handling node) and then to a `Save Video` node to get your final animation file.
+1.  **Compose Your Scene**: Build complex scenes by loading multiple `RenderFormer Mesh Loader` nodes. Group them logically using `RenderFormer Mesh Combine` nodes. You can even chain `Combine` nodes together for highly organized, large-scale scenes.
+2.  **Animate the Camera**: Define the starting view with a `RenderFormer Camera` node and the ending view with a `RenderFormer Camera Target` node.
+3.  **Animate Multiple Lights**:
+    *   For each light you want to animate, create a pair of `RenderFormer Lighting` (for the start state) and `RenderFormer Lighting Target` (for the end state) nodes.
+    *   Feed all the `Lighting Target` outputs into a single `RenderFormer Lighting Combine` node. This node intelligently gathers all start and end states.
+4.  **Build the Scene Sequence**:
+    *   Connect your final combined `MESH` to the `RenderFormer Scene Builder`.
+    *   Connect your starting `RenderFormer Camera` to the required `camera` input.
+    *   Connect your `RenderFormer Camera Target` to the optional `camera_sequence` input.
+    *   The `RenderFormer Lighting Combine` node provides two outputs. Connect its `LIGHTING` output to the required `lighting` input of the Scene Builder, and its `LIGHTING_SEQUENCE` output to the optional `lighting_sequence` input.
+5.  **Render and Save**: The `RenderFormer Sampler` will receive the `SCENE_SEQUENCE` and render all frames, which can then be saved as a video.
 
 ---
 
@@ -246,12 +257,12 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 -   **RenderFormer Lighting**: Creates a configurable emissive light source.
 
 #### Animation
--   **RenderFormer Camera Target**: Creates a camera animation sequence by interpolating between a start and end camera state (position, look-at, FOV).
--   **RenderFormer Lighting Target**: Creates a light animation sequence by interpolating between a start and end light state (position, rotation, scale, and emission).
+-   **RenderFormer Camera Target**: Creates a camera animation sequence by defining a start and end camera state (position, look-at, FOV).
+-   **RenderFormer Lighting Target**: Creates a light animation sequence by defining a start and end light state (position, rotation, scale, and emission).
 
 #### Utilities
 -   **RenderFormer Mesh Combine**: Combines multiple `MESH` outputs into a single object list.
--   **RenderFormer Lighting Combine**: A powerful node that enables multi-light animation. It accepts any combination of static lights and animated light sequences, and outputs two complete lists: one for the start frame and one for the end frame. This allows for complex, synchronized lighting animations.
+-   **RenderFormer Lighting Combine**: A powerful node that enables multi-light animation. It accepts any combination of static lights (`LIGHTING`) and animated lights (`LIGHTING_SEQUENCE`), and outputs a single, unified `LIGHTING_SEQUENCE` ready for the Scene Builder. It also outputs the `start_frame_lighting` separately for a direct, convenient connection.
 -   **RenderFormer Remesh**: Simplifies the geometry of a mesh to a target face count using `pymeshlab`.
 -   **RenderFormer Random Colors**: Applies random vertex colors to a mesh for creative effects or debugging.
 
@@ -263,13 +274,11 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 
 ### 📜 Version History
 
-#### Version 0.4.0 - Multi-Light Animation
--   **Feature: Multi-Light Animation:** The lighting system has been completely overhauled to support the animation of multiple lights simultaneously.
--   **Workflow:** The `RenderFormerLightingCombine` node is now the central hub for all lighting. It takes any combination of static and animated lights and produces a `start_frame_lighting` and `end_frame_lighting` list.
--   **Workflow:** The `RenderFormerSceneBuilder` now uses the `end_lighting` input to receive the end-frame data, simplifying the animation triggering logic. This removes the need for a separate `lighting_sequence` input.
-
-#### Version 0.3.1 - Flexible Lighting Workflow
--   **Workflow:** The `RenderFormerLightingCombine` node has been overhauled. It now accepts both static `LIGHTING` and animated `LIGHTING_SEQUENCE` inputs simultaneously. It intelligently separates the animation data, allowing you to combine multiple static lights with one animated light in a single, streamlined workflow.
+#### Version 0.5.0 - Workflow Optimization
+-   **Workflow:** The animation workflow has been significantly simplified and made more robust. The `RenderFormerSceneBuilder` now has a **required** `lighting` input that explicitly defines the start-frame lighting.
+-   **Workflow:** The `end_lighting` input on the `Scene Builder` has been **removed**. All lighting animation is now handled by the optional `lighting_sequence` input, which provides the end-frame state.
+-   **Data Flow:** The `RenderFormerLightingTarget` and `RenderFormerLightingCombine` nodes have been updated to output a standardized `LIGHTING_SEQUENCE` dictionary (`{ "start_lights": [...], "end_lights": [...] }`), ensuring consistent data flow.
+-   **Convenience:** The `RenderFormerLightingCombine` node now provides a separate `start_frame_lighting` output for a direct connection to the `Scene Builder`'s required `lighting` input, preserving a clean and logical graph.
 
 #### Version 0.3.0 - Animation Overhaul and Performance Boost
 -   **Feature: Full Light Animation:** The `RenderFormerLightingTarget` node now supports animating a light's position, rotation, scale, and emissive strength, enabling complex dynamic lighting effects.

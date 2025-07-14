@@ -435,9 +435,9 @@ class RenderFormerLightingTarget:
         return {
             "required": {
                 "start_lighting": ("LIGHTING",),
-                "end_pos_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
-                "end_pos_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
-                "end_pos_z": ("FLOAT", {"default": 2.1, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "end_pos_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
+                "end_pos_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
+                "end_pos_z": ("FLOAT", {"default": 2.1, "min": -10.0, "max": 10.0, "step": 0.001}),
                 "end_rot_x": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
                 "end_rot_y": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
                 "end_rot_z": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
@@ -446,21 +446,18 @@ class RenderFormerLightingTarget:
             }
         }
     
-    RETURN_TYPES = ("LIGHTING_SEQUENCE",)
+    RETURN_TYPES = ("LIGHTING",)
     FUNCTION = "get_lighting_sequence"
     CATEGORY = "PHRenderFormer"
 
     def get_lighting_sequence(self, start_lighting, end_pos_x, end_pos_y, end_pos_z, end_rot_x, end_rot_y, end_rot_z, end_scale, end_emissive_strength):
-        # This node receives the single light to be animated.
         if not start_lighting or not isinstance(start_lighting, list) or not start_lighting[0]:
             raise Exception("RenderFormerLightingTarget: Invalid start_lighting input.")
 
         start_light_def = start_lighting[0]
         
-        # Create a deep copy for the end state to ensure complete data isolation.
         end_light_def = copy.deepcopy(start_light_def)
         
-        # Modify the deep-copied data with the new end-state values.
         end_light_def["transform"]["translation"] = [end_pos_x, end_pos_y, end_pos_z]
         end_light_def["transform"]["rotation"] = [end_rot_x, end_rot_y, end_rot_z]
         end_light_def["transform"]["scale"] = [end_scale, end_scale, end_scale]
@@ -469,9 +466,12 @@ class RenderFormerLightingTarget:
         base_color = [c / max(start_emissive) if max(start_emissive) > 0 else 0 for c in start_emissive]
         end_light_def["material"]["emissive"] = [c * end_emissive_strength for c in base_color]
 
-        # The output sequence contains ONLY the start and end states for the animated light.
+        # The output is a dictionary containing both start and end states.
+        # It is returned under the generic 'LIGHTING' type to allow it to be connected
+        # to the Combine node.
         lighting_output = {
-            "sequence": [start_light_def, end_light_def]
+            "start_lights": [start_light_def],
+            "end_lights": [end_light_def]
         }
         
         return (lighting_output,)
@@ -480,56 +480,65 @@ class RenderFormerLightingTarget:
 class RenderFormerLightingCombine:
     @classmethod
     def INPUT_TYPES(cls):
+        # All inputs are now of the generic 'LIGHTING' type.
+        # The node's logic will distinguish between static lists and animated dicts.
         return {
             "optional": {
-                "lighting_1": ("*",), "lighting_2": ("*",), "lighting_3": ("*",), "lighting_4": ("*",),
-                "lighting_5": ("*",), "lighting_6": ("*",), "lighting_7": ("*",), "lighting_8": ("*",),
+                "lighting_1": ("LIGHTING",), "lighting_2": ("LIGHTING",),
+                "lighting_3": ("LIGHTING",), "lighting_4": ("LIGHTING",),
+                "lighting_5": ("LIGHTING",), "lighting_6": ("LIGHTING",),
+                "lighting_7": ("LIGHTING",), "lighting_8": ("LIGHTING",),
             }
         }
 
     RETURN_TYPES = ("LIGHTING", "LIGHTING",)
-    RETURN_NAMES = ("start_frame_lighting", "end_frame_lighting",)
+    RETURN_NAMES = ("LIGHTING", "LIGHTING_SEQUENCE",)
     FUNCTION = "combine_lighting"
     CATEGORY = "PHRenderFormer"
 
     def combine_lighting(self, **kwargs):
-        start_frame_lights = []
-        end_frame_lights = []
+        all_start_lights = []
+        animated_end_map = {}
         
-        has_animation = False
-
-        # First pass to gather all lights and check for animations
-        all_inputs = []
+        # First pass: Collect all start lights and map animated end states by UUID
         for i in range(1, 9):
             light_input = kwargs.get(f"lighting_{i}")
-            if light_input:
-                all_inputs.append(light_input)
-                if isinstance(light_input, dict) and "sequence" in light_input:
-                    has_animation = True
+            if not light_input:
+                continue
 
-        # Process all inputs
-        for light_input in all_inputs:
-            # It's an animation sequence
-            if isinstance(light_input, dict) and "sequence" in light_input:
-                sequence = light_input.get("sequence", [])
-                if len(sequence) >= 2:
-                    start_frame_lights.append(sequence[0])
-                    end_frame_lights.append(sequence[1])
-            # It's a static light (or list of static lights)
+            # It's an animation sequence (a dictionary)
+            if isinstance(light_input, dict):
+                start_defs = light_input.get("start_lights", [])
+                end_defs = light_input.get("end_lights", [])
+                all_start_lights.extend(start_defs)
+                # Map the end state of each light in the sequence by its UUID
+                for j, start_def in enumerate(start_defs):
+                    if "ph_uuid" in start_def and j < len(end_defs):
+                        animated_end_map[start_def["ph_uuid"]] = end_defs[j]
+            
+            # It's a static light (a list of light definitions)
             elif isinstance(light_input, list):
-                for light_def in light_input:
-                    # Add the static light to both start and end frames
-                    start_frame_lights.append(light_def)
-                    if has_animation:
-                        # If we are animating ANY light, static lights must be in the end list too
-                        end_frame_lights.append(copy.deepcopy(light_def))
+                all_start_lights.extend(light_input)
 
-        # If there was no animation, the end_frame_lights list will be empty.
-        # In this case, we should return None for the end frame to signal no animation.
-        if not has_animation:
-            end_frame_lights = None
+        # Second pass: Build the end_frame_lights list to ensure 1-to-1 correspondence
+        all_end_lights = []
+        for start_light in all_start_lights:
+            uuid = start_light.get("ph_uuid")
+            # If this light has a defined end state in our map, use it.
+            if uuid and uuid in animated_end_map:
+                all_end_lights.append(animated_end_map[uuid])
+            # Otherwise, it's a static light, so duplicate its start state for the end frame.
+            else:
+                all_end_lights.append(copy.deepcopy(start_light))
 
-        return (start_frame_lights, end_frame_lights)
+        # The combined output is a dictionary, but it's returned as type 'LIGHTING'.
+        lighting_sequence = {
+            "start_lights": all_start_lights,
+            "end_lights": all_end_lights
+        }
+
+        # Return the start frame lights first (for the top output) and then the full sequence.
+        return (all_start_lights, lighting_sequence)
 
 class RenderFormerSceneBuilder:
     """
@@ -545,8 +554,8 @@ class RenderFormerSceneBuilder:
             },
             "optional": {
                 "camera_sequence": ("CAMERA_SEQUENCE",),
-                "end_lighting": ("LIGHTING",),
-                "lighting_sequence": ("LIGHTING_SEQUENCE",), # For backward compatibility
+                "camera_sequence": ("CAMERA_SEQUENCE",),
+                "lighting_sequence": ("LIGHTING",),
                 "num_frames": ("INT", {"default": 1, "min": 1, "max": 1000}),
                 "add_default_background": ("BOOLEAN", {"default": False}),
             }
@@ -556,11 +565,11 @@ class RenderFormerSceneBuilder:
     FUNCTION = "build_scene"
     CATEGORY = "PHRenderFormer"
 
-    def build_scene(self, mesh, lighting, camera, camera_sequence=None, end_lighting=None, lighting_sequence=None, num_frames=1, add_default_background=False):
+    def build_scene(self, mesh, lighting, camera, camera_sequence=None, lighting_sequence=None, num_frames=1, add_default_background=False):
         output_scene = None
         output_sequence = None
 
-        is_animation = num_frames > 1 and (camera_sequence is not None or end_lighting is not None or lighting_sequence is not None)
+        is_animation = num_frames > 1 and (camera_sequence is not None or lighting_sequence is not None)
 
         if not is_animation:
             # Build a single static scene
@@ -568,43 +577,19 @@ class RenderFormerSceneBuilder:
                 output_scene = self._build_single_scene(tmpdir, mesh, camera, lighting, add_default_background)
             return (output_scene, None)
 
-        # --- Animation Sequence Building (High-Performance Tensor Interpolation) ---
-        print(f"PHRenderFormer: Building video scene with {num_frames} frames using tensor interpolation.")
+        # --- Animation Sequence Building ---
+        print(f"PHRenderFormer: Building video scene with {num_frames} frames.")
         pbar = comfy.utils.ProgressBar(num_frames)
 
         # --- Determine Start and End Configurations ---
+        # The 'camera' and 'lighting' inputs are ALWAYS the start frame.
         start_cam_config = camera
-        end_cam_config = camera
-        if camera_sequence:
-            start_cam_config = camera_sequence["sequence"][0]
-            end_cam_config = camera_sequence["sequence"][-1]
-
         start_lighting_config = lighting
-        end_lighting_config = None # Initialize to None
 
-        if end_lighting is not None:
-            # New, preferred workflow for multi-light animation
-            end_lighting_config = end_lighting
-        elif lighting_sequence is not None:
-            # Old, deprecated workflow for single-light animation
-            print("PHRenderFormer WARNING: The 'lighting_sequence' input is deprecated. Please use the new 'RenderFormerLightingCombine' node and connect its 'end_frame_lighting' output to the 'end_lighting' input of the Scene Builder for a more robust workflow.")
-            end_lighting_config = copy.deepcopy(lighting)  # Start with a copy of the start lights
-            start_light_def_anim = lighting_sequence["sequence"][0]
-            end_light_def_anim = lighting_sequence["sequence"][-1]
-            anim_light_id = start_light_def_anim.get("ph_uuid")
-            if anim_light_id:
-                found = False
-                for i, light_def in enumerate(end_lighting_config):
-                    if light_def.get("ph_uuid") == anim_light_id:
-                        end_lighting_config[i] = end_light_def_anim
-                        found = True
-                        break
-                if not found:
-                    print(f"Warning: Animated light with UUID {anim_light_id} not found in the main lighting list.")
-        
-        if end_lighting_config is None:
-            # If no animation data was provided for lighting, the end state is the same as the start
-            end_lighting_config = start_lighting_config
+        # The '..._sequence' inputs provide the end frame. If not provided, the end state is the same as the start.
+        end_cam_config = camera_sequence["sequence"][-1] if camera_sequence and "sequence" in camera_sequence and camera_sequence["sequence"] else start_cam_config
+        # Check if lighting_sequence is a dictionary (i.e., an animation) before accessing its keys.
+        end_lighting_config = lighting_sequence["end_lights"] if lighting_sequence and isinstance(lighting_sequence, dict) and "end_lights" in lighting_sequence else start_lighting_config
 
         # --- Build Keyframe Scenes in completely isolated directories ---
         start_scene = None
@@ -770,7 +755,7 @@ class RenderFormerSceneBuilder:
                 with h5py.File(h5_buffer, "w") as f:
                     f.create_dataset("triangles", data=all_triangles.astype(np.float32), compression="gzip")
                     f.create_dataset("vn", data=all_vn.astype(np.float32), compression="gzip")
-                    f.create_dataset("texture", data=all_texture.astype(np.float16), compression="gzip")
+                    f.create_dataset("texture", data=all_texture.astype(np.float32), compression="gzip")
                     f.create_dataset("c2w", data=np.stack(all_c2w).astype(np.float32), compression="gzip")
                     f.create_dataset("fov", data=np.array(all_fov).astype(np.float32), compression="gzip")
 
@@ -1070,7 +1055,7 @@ class RenderFormerExampleScene:
                     with h5py.File(output_h5_buffer, "w") as f:
                         f.create_dataset("triangles", data=all_triangles.astype(np.float32), compression="gzip", compression_opts=9)
                         f.create_dataset("vn", data=all_vn.astype(np.float32), compression="gzip", compression_opts=9)
-                        f.create_dataset("texture", data=all_texture.astype(np.float16), compression="gzip", compression_opts=9)
+                        f.create_dataset("texture", data=all_texture.astype(np.float32), compression="gzip", compression_opts=9)
                         f.create_dataset("c2w", data=all_c2w.astype(np.float32), compression="gzip", compression_opts=9)
                         f.create_dataset("fov", data=all_fov.astype(np.float32), compression="gzip", compression_opts=9)
 
@@ -1539,7 +1524,7 @@ class RenderFormerFromJSON:
                         with h5py.File(output_h5_buffer, "w") as f:
                             f.create_dataset("triangles", data=all_triangles.astype(np.float32), compression="gzip", compression_opts=9)
                             f.create_dataset("vn", data=all_vn.astype(np.float32), compression="gzip", compression_opts=9)
-                            f.create_dataset("texture", data=all_texture.astype(np.float16), compression="gzip", compression_opts=9)
+                            f.create_dataset("texture", data=all_texture.astype(np.float32), compression="gzip", compression_opts=9)
                             f.create_dataset("c2w", data=all_c2w.astype(np.float32), compression="gzip", compression_opts=9)
                             f.create_dataset("fov", data=all_fov.astype(np.float32), compression="gzip", compression_opts=9)
 
