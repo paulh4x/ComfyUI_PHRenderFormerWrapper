@@ -143,10 +143,10 @@ graph TD
 
 -   **🎨 End-to-End Rendering:** Load 3D models, define materials, set up cameras, and render—all within ComfyUI.
 -   **⚙️ Modular Node-Based Workflow:** Each step of the rendering pipeline is a separate node, allowing for flexible and complex setups.
--   **🎥 Animation & Video:** Create camera animations by interpolating between keyframes. The nodes output image batches compatible with ComfyUI's native video-saving nodes.
+-   **🎥 Animation & Video:** Create camera and light animations by interpolating between keyframes. The nodes output image batches compatible with ComfyUI's native video-saving nodes.
 -   **🔧 Advanced Mesh Processing:** Includes nodes for loading, combining, remeshing, and applying simple color randomization to your 3D assets.
 -   **💡 Lighting and Material Control:** Easily add and combine multiple light sources and control PBR material properties like diffuse, specular, roughness, and emission.
--   **↔️ Full Transformation Control:** Apply translation, rotation, and scaling to objects within the scene.
+-   **↔️ Full Transformation Control:** Apply translation, rotation, and scaling to any object or light in the scene.
 
 ---
 
@@ -164,8 +164,9 @@ This project is under active development. Here is a summary of the progress so f
 #### ✅ Done
 
 -   **Core Rendering Pipeline:** All essential nodes for building and rendering a static 3D scene are implemented.
--   **In-Memory Processing:** Partitial scene preparation pipeline is handled in-memory to maximize speed.
+-   **In-Memory Processing:** The entire scene preparation pipeline, from loading meshes to generating the final HDF5 data, is now handled in-memory. This significantly improves performance by avoiding slow disk I/O.
 -   **Video Rendering:** A complete, dedicated workflow for video rendering is in place.
+-   **Light Animation:** Full animation support for lights, including position, rotation, scale, and emission.
 -   **Advanced Utilities:** Nodes for mesh combination, remeshing, and JSON-based scene loading are functional.
 -   **Custom UI Elements:** The nodes feature custom colors for better visual organization, and progress bars are implemented for long-running operations.
 -   **Bug Fixes:** Addressed various bugs related to file handling, data types, and temporary file management.
@@ -174,10 +175,9 @@ This project is under active development. Here is a summary of the progress so f
 #### 📋 To Do
 
 -   [ ] **Randomize Color Fix:** Fix `RandomizeColors` node, will produce the expected visual output.
--   [ ] **⚡ In-Memory Processing:** Fix entire scene preparation pipeline, from loading meshes to generating the final HDF5 data for the model, should be handled in-memory to maximize speed and avoid disk I/O.
--   [ ] **Camera Animation:** Fix flickering in animations especially for objects with high glossy materials.
+-   [ ] **Animation Flickering:** Investigate and fix flickering in animations, especially for objects with highly reflective materials.
 -   [ ] **Mesh Format Support:** Add support for loading `.glb` and `.fbx` files, including their materials and textures.
--   [ ] **Target Animation Nodes:** Implement animation capabilities for `MESH` and `LIGHT` properties, not just the camera.
+-   [ ] **Mesh Animation:** Implement animation capabilities for `MESH` properties (translation, rotation, scale).
 -   [ ] **Camera Adoption:** Integrate with the `Load 3D` core node to adopt its camera transformations.
 -   [ ] **Material Presets:** Create a system for saving and loading material presets.
 -   [ ] **Public Release:** Prepare for a more stable, public release with better documentation and examples.
@@ -247,10 +247,11 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 
 #### Animation
 -   **RenderFormer Camera Target**: Creates a camera animation sequence by interpolating between a start and end camera state (position, look-at, FOV).
+-   **RenderFormer Lighting Target**: Creates a light animation sequence by interpolating between a start and end light state (position, rotation, scale, and emission).
 
 #### Utilities
 -   **RenderFormer Mesh Combine**: Combines multiple `MESH` outputs into a single object list.
--   **RenderFormer Lighting Combine**: Combines multiple light sources into a single list for the scene builder.
+-   **RenderFormer Lighting Combine**: A powerful node that enables multi-light animation. It accepts any combination of static lights and animated light sequences, and outputs two complete lists: one for the start frame and one for the end frame. This allows for complex, synchronized lighting animations.
 -   **RenderFormer Remesh**: Simplifies the geometry of a mesh to a target face count using `pymeshlab`.
 -   **RenderFormer Random Colors**: Applies random vertex colors to a mesh for creative effects or debugging.
 
@@ -261,6 +262,20 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 ---
 
 ### 📜 Version History
+
+#### Version 0.4.0 - Multi-Light Animation
+-   **Feature: Multi-Light Animation:** The lighting system has been completely overhauled to support the animation of multiple lights simultaneously.
+-   **Workflow:** The `RenderFormerLightingCombine` node is now the central hub for all lighting. It takes any combination of static and animated lights and produces a `start_frame_lighting` and `end_frame_lighting` list.
+-   **Workflow:** The `RenderFormerSceneBuilder` now uses the `end_lighting` input to receive the end-frame data, simplifying the animation triggering logic. This removes the need for a separate `lighting_sequence` input.
+
+#### Version 0.3.1 - Flexible Lighting Workflow
+-   **Workflow:** The `RenderFormerLightingCombine` node has been overhauled. It now accepts both static `LIGHTING` and animated `LIGHTING_SEQUENCE` inputs simultaneously. It intelligently separates the animation data, allowing you to combine multiple static lights with one animated light in a single, streamlined workflow.
+
+#### Version 0.3.0 - Animation Overhaul and Performance Boost
+-   **Feature: Full Light Animation:** The `RenderFormerLightingTarget` node now supports animating a light's position, rotation, scale, and emissive strength, enabling complex dynamic lighting effects.
+-   **Fix: Animation Transformation:** Reworked the animation pipeline to correctly interpolate object and light transformations, ensuring smooth movement, rotation, and scaling.
+-   **Performance: In-Memory Scene Generation:** The entire scene-building process now runs in-memory, dramatically reducing processing time by avoiding disk I/O for intermediate files.
+-   **Workflow:** The `RenderFormer Sampler` and `Scene Builder` nodes now handle both static scenes and animation sequences more robustly.
 
 #### Version 0.2.5 - Node Consolidation and Workflow Simplification
 -   **Workflow:** Merged the `RenderFormerVideoSamplerBatched` into the main `RenderFormerGenerator` (now `RenderFormer Sampler`). The sampler now intelligently handles both single images and video sequences, with an optional `IMAGES` output.

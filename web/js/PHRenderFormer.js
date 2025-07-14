@@ -91,6 +91,7 @@ app.registerExtension({
             "RenderFormerFromJSON",
             "RenderFormerMeshCombine",
             "RenderFormerLightingCombine",
+            "RenderFormerLightingTarget",
         ];
 
         if (node_names.includes(node.comfyClass)) {
