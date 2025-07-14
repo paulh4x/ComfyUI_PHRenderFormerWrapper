@@ -214,6 +214,7 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 #### Animation
 -   **RenderFormer Camera Target**: Creates a camera animation sequence by defining a start and end camera state (position, look-at, FOV).
 -   **RenderFormer Lighting Target**: Creates a light animation sequence by defining a start and end light state (position, rotation, scale, and emission).
+-   **RenderFormer Mesh Target**: Creates a mesh animation sequence by defining a start and end state for a mesh's transformation (position, rotation, scale) and material properties (diffuse color, specular color, roughness).
 
 #### Utilities
 -   **RenderFormer Mesh Combine**: Combines multiple `MESH` outputs into a single object list.
@@ -254,7 +255,7 @@ This project is under active development. Here is a summary of the progress so f
 
 -   [ ] **Animation Flickering:** Investigate and fix flickering in animations, especially for objects with highly reflective materials.
 -   [ ] **Mesh Format Support:** Add support for loading `.glb` and `.fbx` files, including their materials and textures.
--   [ ] **Mesh Animation:** Implement animation capabilities for `MESH` properties (translation, rotation, scale).
+-   [x] **Mesh Animation:** Implemented animation capabilities for `MESH` properties (translation, rotation, scale) and materials (diffuse, specular, roughness).
 -   [ ] **Camera Adoption:** Integrate with the `Load 3D` core node to adopt its camera transformations.
 -   [ ] **Material Presets:** Create a system for saving and loading material presets.
 -   [ ] **Public Release:** Prepare for a more stable, public release with better documentation and examples.
@@ -262,6 +263,12 @@ This project is under active development. Here is a summary of the progress so f
 ---
 
 ### 📜 Version History
+
+#### Version 0.4.0 - Mesh Animation
+-   **Feature: Mesh & Material Animation:** A complete animation workflow for meshes has been implemented.
+-   **New Node: `RenderFormerMeshTarget`:** This new node allows you to define an animation for a mesh by specifying its end-state transformation (position, rotation, scale) and material properties (diffuse color, specular color, roughness).
+-   **Enhancement: `RenderFormerMeshCombine`:** This node has been upgraded to intelligently handle both static meshes and the new animated mesh sequences, allowing you to combine multiple animated and static objects in a scene.
+-   **Enhancement: `RenderFormerSceneBuilder`:** The scene builder now correctly processes the new mesh animation sequence, enabling it to generate interpolated frames for mesh animations just as it does for cameras and lights.
 
 #### Version 0.3.35 - Bug Fixes & Stability
 -   **Fix:** Resolved a critical `WrongTypeError` in the `RenderFormerRandomizeColors` node. The `random_diffuse_type` was being set to an incorrect string value (`"per triangle"`), which has now been corrected to the valid literal (`"per-triangle"`).

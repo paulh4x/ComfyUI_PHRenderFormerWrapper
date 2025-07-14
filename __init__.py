@@ -16,7 +16,7 @@ logo = fr"""
 {dark_yellow}   __/ __ |      /   -_)    \    _` |   -_)   _| _|  _ \   _| ` \    -_)   _|{reset}
 {dark_yellow}  _|  _| _|   _|_\ \___| _| _| \__,_| \___| _|  _| \___/ _| _|_|_| \___| _|{reset}
 
-{dark_grey}      -->> PH's RenderFormer Wrapper for ComfyUI Version: 0.3.35 <<--{reset}
+{dark_grey}      -->> PH's RenderFormer Wrapper for ComfyUI Version: 0.4.0 <<--{reset}
 """
 
 print(logo)

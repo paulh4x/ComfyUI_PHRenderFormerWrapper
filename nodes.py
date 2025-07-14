@@ -571,6 +571,7 @@ class RenderFormerSceneBuilder:
                 "camera_sequence": ("CAMERA_SEQUENCE",),
                 "camera_sequence": ("CAMERA_SEQUENCE",),
                 "lighting_sequence": ("LIGHTING",),
+                "mesh_sequence": ("MESH_SEQUENCE",),
                 "num_frames": ("INT", {"default": 1, "min": 1, "max": 1000}),
                 "add_default_background": ("BOOLEAN", {"default": False}),
             }
@@ -580,11 +581,11 @@ class RenderFormerSceneBuilder:
     FUNCTION = "build_scene"
     CATEGORY = "PHRenderFormer"
 
-    def build_scene(self, mesh, lighting, camera, camera_sequence=None, lighting_sequence=None, num_frames=1, add_default_background=False):
+    def build_scene(self, mesh, lighting, camera, camera_sequence=None, lighting_sequence=None, mesh_sequence=None, num_frames=1, add_default_background=False):
         output_scene = None
         output_sequence = None
 
-        is_animation = num_frames > 1 and (camera_sequence is not None or lighting_sequence is not None)
+        is_animation = num_frames > 1 and (camera_sequence is not None or lighting_sequence is not None or mesh_sequence is not None)
 
         if not is_animation:
             # Build a single static scene
@@ -598,13 +599,55 @@ class RenderFormerSceneBuilder:
 
         # --- Determine Start and End Configurations ---
         # The 'camera' and 'lighting' inputs are ALWAYS the start frame.
-        start_cam_config = camera
-        start_lighting_config = lighting
+        # For animations, the sequence inputs are the source of truth for BOTH start and end frames.
+        # If a sequence isn't provided, we fall back to the static input for that element.
+        start_cam_config = camera_sequence["sequence"][0] if camera_sequence and "sequence" in camera_sequence and camera_sequence["sequence"] else camera
+        end_cam_config = camera_sequence["sequence"][-1] if camera_sequence and "sequence" in camera_sequence and camera_sequence["sequence"] else camera
 
-        # The '..._sequence' inputs provide the end frame. If not provided, the end state is the same as the start.
-        end_cam_config = camera_sequence["sequence"][-1] if camera_sequence and "sequence" in camera_sequence and camera_sequence["sequence"] else start_cam_config
-        # Check if lighting_sequence is a dictionary (i.e., an animation) before accessing its keys.
-        end_lighting_config = lighting_sequence["end_lights"] if lighting_sequence and isinstance(lighting_sequence, dict) and "end_lights" in lighting_sequence else start_lighting_config
+        start_lighting_config = lighting_sequence["start_lights"] if lighting_sequence and isinstance(lighting_sequence, dict) and "start_lights" in lighting_sequence else lighting
+        end_lighting_config = lighting_sequence["end_lights"] if lighting_sequence and isinstance(lighting_sequence, dict) and "end_lights" in lighting_sequence else lighting
+
+        # --- Mesh Configuration: Smartly combine static and animated meshes ---
+        if not (mesh_sequence and isinstance(mesh_sequence, dict)):
+            # If there's no animation sequence, we just use the static meshes.
+            start_mesh_config = mesh
+            end_mesh_config = copy.deepcopy(mesh) if mesh else None
+        else:
+            # An animation sequence exists. We need to filter out the animated mesh's
+            # static counterpart from the main 'mesh' input to avoid duplication.
+            static_meshes = mesh.get("meshes", []) if mesh else []
+            static_materials = mesh.get("materials", []) if mesh else []
+            static_transforms = mesh.get("transforms", []) if mesh else []
+
+            animated_start_data = mesh_sequence.get("start_meshes", {})
+            animated_start_meshes = animated_start_data.get("meshes", [])
+
+            # These lists will hold the static meshes that are NOT being animated.
+            clean_static_meshes, clean_static_materials, clean_static_transforms = [], [], []
+
+            # Iterate through the static meshes and keep only the ones that are not
+            # also present in the animated list (by object identity).
+            for i, static_mesh_obj in enumerate(static_meshes):
+                if not any(static_mesh_obj is anim_mesh_obj for anim_mesh_obj in animated_start_meshes):
+                    clean_static_meshes.append(static_mesh_obj)
+                    clean_static_materials.append(static_materials[i])
+                    clean_static_transforms.append(static_transforms[i])
+
+            # The start frame is the clean static list plus the start state of the animated meshes.
+            start_mesh_config = {
+                "meshes": clean_static_meshes + animated_start_data.get("meshes", []),
+                "materials": clean_static_materials + animated_start_data.get("materials", []),
+                "transforms": clean_static_transforms + animated_start_data.get("transforms", [])
+            }
+
+            # The end frame is a copy of the clean static list plus the end state of the animated meshes.
+            animated_end_data = mesh_sequence.get("end_meshes", {})
+            end_mesh_config = {
+                "meshes": copy.deepcopy(clean_static_meshes) + animated_end_data.get("meshes", []),
+                "materials": copy.deepcopy(clean_static_materials) + animated_end_data.get("materials", []),
+                "transforms": copy.deepcopy(clean_static_transforms) + animated_end_data.get("transforms", [])
+            }
+
 
         # --- Build Keyframe Scenes in completely isolated directories ---
         start_scene = None
@@ -613,14 +656,14 @@ class RenderFormerSceneBuilder:
         with tempfile.TemporaryDirectory() as start_tmpdir, tempfile.TemporaryDirectory() as end_tmpdir:
             # Build scene for the START frame
             print("PHRenderFormer: Building start frame...")
-            start_scene = self._build_single_scene(start_tmpdir, mesh, start_cam_config, start_lighting_config, add_default_background)
+            start_scene = self._build_single_scene(start_tmpdir, start_mesh_config, start_cam_config, start_lighting_config, add_default_background)
             if not start_scene:
                 raise Exception("Failed to build the start frame for interpolation.")
             pbar.update(1)
 
             # Build scene for the END frame
             print("PHRenderFormer: Building end frame...")
-            end_scene = self._build_single_scene(end_tmpdir, mesh, end_cam_config, end_lighting_config, add_default_background)
+            end_scene = self._build_single_scene(end_tmpdir, end_mesh_config, end_cam_config, end_lighting_config, add_default_background)
             if not end_scene:
                 raise Exception("Failed to build the end frame for interpolation.")
             pbar.update(1)
@@ -810,31 +853,166 @@ class RenderFormerMeshCombine:
             }
         }
 
-    RETURN_TYPES = ("MESH",)
+    RETURN_TYPES = ("MESH", "MESH_SEQUENCE",)
+    RETURN_NAMES = ("MESH", "MESH_SEQUENCE",)
     FUNCTION = "combine_meshes"
     CATEGORY = "PHRenderFormer"
 
-    def combine_meshes(self, mesh_1, **kwargs):
-        all_meshes = []
-        all_materials = []
-        all_transforms = []
+    def combine_meshes(self, **kwargs):
+        # Lists to hold the components for the start and end frames
+        all_start_meshes, all_start_materials, all_start_transforms = [], [], []
+        all_end_meshes, all_end_materials, all_end_transforms = [], [], []
 
-        # Add the first mesh and material
-        all_meshes.extend(mesh_1["meshes"])
-        all_materials.extend(mesh_1["materials"])
-        all_transforms.extend(mesh_1["transforms"])
-        
-        # Add subsequent meshes and materials from optional inputs
-        for key in sorted(kwargs.keys()):
-            mesh = kwargs.get(key)
-            if mesh and isinstance(mesh, dict) and "meshes" in mesh and "materials" in mesh and "transforms" in mesh:
-                all_meshes.extend(mesh["meshes"])
-                all_materials.extend(mesh["materials"])
-                all_transforms.extend(mesh["transforms"])
-        
-        combined_ph_mesh = {"meshes": all_meshes, "materials": all_materials, "transforms": all_transforms}
+        # Iterate through all possible mesh inputs
+        for i in range(1, 9):
+            mesh_input = kwargs.get(f"mesh_{i}")
+            if not mesh_input:
+                continue
 
-        return (combined_ph_mesh,)
+            # Case 1: Input is an animated MESH_SEQUENCE
+            if isinstance(mesh_input, dict) and "start_meshes" in mesh_input and "end_meshes" in mesh_input:
+                start_data = mesh_input["start_meshes"]
+                end_data = mesh_input["end_meshes"]
+                
+                all_start_meshes.extend(start_data["meshes"])
+                all_start_materials.extend(start_data["materials"])
+                all_start_transforms.extend(start_data["transforms"])
+                
+                all_end_meshes.extend(end_data["meshes"])
+                all_end_materials.extend(end_data["materials"])
+                all_end_transforms.extend(end_data["transforms"])
+
+            # Case 2: Input is a static MESH object
+            elif isinstance(mesh_input, dict) and "meshes" in mesh_input:
+                # For a static mesh, its properties are the same for both start and end frames.
+                # We do a deepcopy for the end frame to prevent any potential downstream mutation issues.
+                all_start_meshes.extend(mesh_input["meshes"])
+                all_start_materials.extend(mesh_input["materials"])
+                all_start_transforms.extend(mesh_input["transforms"])
+                
+                all_end_meshes.extend(copy.deepcopy(mesh_input["meshes"]))
+                all_end_materials.extend(copy.deepcopy(mesh_input["materials"]))
+                all_end_transforms.extend(copy.deepcopy(mesh_input["transforms"]))
+
+        # Package the final outputs
+        start_frame_combined = {
+            "meshes": all_start_meshes,
+            "materials": all_start_materials,
+            "transforms": all_start_transforms
+        }
+        
+        end_frame_combined = {
+            "meshes": all_end_meshes,
+            "materials": all_end_materials,
+            "transforms": all_end_transforms
+        }
+
+        # This is the final sequence object sent to the Scene Builder
+        mesh_sequence = {
+            "start_meshes": start_frame_combined,
+            "end_meshes": end_frame_combined
+        }
+
+        return (start_frame_combined, mesh_sequence)
+
+
+class RenderFormerMeshTarget:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "start_mesh": ("MESH",),
+                "end_mesh_pos_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
+                "end_mesh_pos_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
+                "end_mesh_pos_z": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
+                "end_mesh_rot_x": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
+                "end_mesh_rot_y": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
+                "end_mesh_rot_z": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
+                "end_scale": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.01}),
+                "end_diffuse_rgb": ("STRING", {"default": "204, 204, 204", "multiline": False}),
+                "end_specular_rgb": ("STRING", {"default": "25, 25, 25", "multiline": False}),
+                "end_roughness": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 1.0, "step": 0.01}),
+            }
+        }
+
+    RETURN_TYPES = ("MESH_SEQUENCE",)
+    FUNCTION = "get_mesh_sequence"
+    CATEGORY = "PHRenderFormer"
+
+    def _parse_color_string(self, color_str, scale=1.0):
+        if not isinstance(color_str, str): return None
+        try:
+            parts = [float(p.strip()) for p in color_str.split(',')]
+            if len(parts) == 3: return [p / scale for p in parts]
+        except (ValueError, AttributeError): pass
+        return None
+
+    def get_mesh_sequence(self, start_mesh, end_mesh_pos_x, end_mesh_pos_y, end_mesh_pos_z,
+                          end_mesh_rot_x, end_mesh_rot_y, end_mesh_rot_z, end_scale,
+                          end_diffuse_rgb, end_specular_rgb, end_roughness):
+        
+        if not start_mesh or "meshes" not in start_mesh or not start_mesh["meshes"]:
+            raise Exception("RenderFormerMeshTarget: Invalid start_mesh input.")
+
+        # --- Create Start and End Data Structures ---
+        start_meshes_data = []
+        end_meshes_data = []
+
+        # The input `start_mesh` can contain multiple sub-meshes. We need to create a
+        # start/end pair for each one.
+        for i in range(len(start_mesh["meshes"])):
+            # --- Start State ---
+            # We create a new dictionary for each mesh to ensure they are independent.
+            start_data = {
+                "mesh": start_mesh["meshes"][i],
+                "material": start_mesh["materials"][i],
+                "transform": start_mesh["transforms"][i],
+                "ph_uuid": str(uuid.uuid4()) # Add a unique ID for tracking in the combine node
+            }
+            start_meshes_data.append(start_data)
+
+            # --- End State ---
+            # Create a deep copy of the start state to modify for the end frame.
+            end_data = copy.deepcopy(start_data)
+            
+            # Update transform for the end state
+            end_data["transform"]["translation"] = [end_mesh_pos_x, end_mesh_pos_y, end_mesh_pos_z]
+            end_data["transform"]["rotation"] = [end_mesh_rot_x, end_mesh_rot_y, end_mesh_rot_z]
+            end_data["transform"]["scale"] = [end_scale, end_scale, end_scale]
+            
+            # Update material for the end state
+            end_diffuse = self._parse_color_string(end_diffuse_rgb, 255.0)
+            if end_diffuse:
+                end_data["material"]["diffuse"] = end_diffuse
+
+            end_specular = self._parse_color_string(end_specular_rgb, 255.0)
+            if end_specular:
+                end_data["material"]["specular"] = end_specular
+            
+            end_data["material"]["roughness"] = end_roughness
+            
+            end_meshes_data.append(end_data)
+
+        # Convert the lists of dicts into the final MESH dictionary format
+        start_frame_combined = {
+            "meshes": [d["mesh"] for d in start_meshes_data],
+            "materials": [d["material"] for d in start_meshes_data],
+            "transforms": [d["transform"] for d in start_meshes_data]
+        }
+        end_frame_combined = {
+            "meshes": [d["mesh"] for d in end_meshes_data],
+            "materials": [d["material"] for d in end_meshes_data],
+            "transforms": [d["transform"] for d in end_meshes_data]
+        }
+
+        # The output is a dictionary containing both start and end states,
+        # with each state being a MESH-formatted dictionary.
+        mesh_output = {
+            "start_meshes": start_frame_combined,
+            "end_meshes": end_frame_combined
+        }
+        
+        return (mesh_output,)
 
 
 class RenderFormerGenerator:
@@ -1580,6 +1758,7 @@ NODE_CLASS_MAPPINGS = {
     "RenderFormerFromJSON": RenderFormerFromJSON,
     "RenderFormerMeshCombine": RenderFormerMeshCombine,
     "RenderFormerLightingCombine": RenderFormerLightingCombine,
+    "RenderFormerMeshTarget": RenderFormerMeshTarget,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -1597,4 +1776,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "RenderFormerFromJSON": "RenderFormer From JSON",
     "RenderFormerMeshCombine": "RenderFormer Mesh Combine",
     "RenderFormerLightingCombine": "RenderFormer Lighting Combine",
+    "RenderFormerMeshTarget": "RenderFormer Mesh Target",
 }

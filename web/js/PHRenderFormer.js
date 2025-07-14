@@ -92,6 +92,7 @@ app.registerExtension({
             "RenderFormerMeshCombine",
             "RenderFormerLightingCombine",
             "RenderFormerLightingTarget",
+            "RenderFormerMeshTarget",
         ];
 
         if (node_names.includes(node.comfyClass)) {
