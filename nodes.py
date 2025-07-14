@@ -258,8 +258,8 @@ class RenderFormerRandomizeColors:
         return {
             "required": {
                 "mesh": ("MESH",),
-                "mode": (["per-triangle", "per-object"],),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "mode": (["per-object", "per-shading", "per-triangle"],),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 999999999}),
                 "max_brightness": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
             }
         }
@@ -272,26 +272,41 @@ class RenderFormerRandomizeColors:
         if not mesh["meshes"]:
             return (mesh,)
 
-        # Create a deep copy of the materials to avoid modifying the original input
+        # Create a deep copy to avoid modifying the original inputs
         new_materials = [mat.copy() for mat in mesh["materials"]]
+        new_meshes = [m.copy() for m in mesh["meshes"]]
+        
         rng = np.random.default_rng(seed)
 
-        for material in new_materials:
-            if mode == "per-object":
-                # Generate a single random color and apply it to the diffuse property
-                color = rng.random(size=3) * max_brightness
-                material['diffuse'] = color.tolist()
-                # Ensure the per-triangle seed is disabled
-                material['rand_tri_diffuse_seed'] = None
-            
-            elif mode == "per-triangle":
-                # Use the built-in per-triangle randomization by setting the seed
+        if mode == "per-triangle":
+            # This mode now correctly uses the material properties.
+            for material in new_materials:
                 material['rand_tri_diffuse_seed'] = seed
                 material['random_diffuse_max'] = max_brightness
+                material['random_diffuse_type'] = 'per-triangle'
+                # Ensure direct diffuse is not overriding this
+                if 'diffuse' in material:
+                    del material['diffuse']
+        
+        else:
+            # Handle per-object and per-shading, which modify the material properties
+            for material in new_materials:
+                if mode == "per-object":
+                    color = rng.random(size=3) * max_brightness
+                    material['diffuse'] = color.tolist()
+                    material['rand_tri_diffuse_seed'] = None
+                
+                elif mode == "per-shading":
+                    material['rand_tri_diffuse_seed'] = seed
+                    material['random_diffuse_max'] = max_brightness
+                    material['random_diffuse_type'] = 'per-shading-group'
+                    # Ensure direct diffuse is not overriding this
+                    if 'diffuse' in material:
+                        del material['diffuse']
 
-        # Return a new mesh dictionary with the updated materials
+        # Return a new mesh dictionary with the updated components
         new_mesh_data = {
-            "meshes": mesh["meshes"],
+            "meshes": new_meshes,
             "materials": new_materials,
             "transforms": mesh["transforms"]
         }
@@ -435,9 +450,9 @@ class RenderFormerLightingTarget:
         return {
             "required": {
                 "start_lighting": ("LIGHTING",),
-                "end_pos_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
-                "end_pos_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.001}),
-                "end_pos_z": ("FLOAT", {"default": 2.1, "min": -10.0, "max": 10.0, "step": 0.001}),
+                "end_pos_x": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "end_pos_y": ("FLOAT", {"default": 0.0, "min": -10.0, "max": 10.0, "step": 0.01}),
+                "end_pos_z": ("FLOAT", {"default": 2.1, "min": -10.0, "max": 10.0, "step": 0.01}),
                 "end_rot_x": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
                 "end_rot_y": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
                 "end_rot_z": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
@@ -755,7 +770,7 @@ class RenderFormerSceneBuilder:
                 with h5py.File(h5_buffer, "w") as f:
                     f.create_dataset("triangles", data=all_triangles.astype(np.float32), compression="gzip")
                     f.create_dataset("vn", data=all_vn.astype(np.float32), compression="gzip")
-                    f.create_dataset("texture", data=all_texture.astype(np.float32), compression="gzip")
+                    f.create_dataset("texture", data=all_texture.astype(np.float16), compression="gzip")
                     f.create_dataset("c2w", data=np.stack(all_c2w).astype(np.float32), compression="gzip")
                     f.create_dataset("fov", data=np.array(all_fov).astype(np.float32), compression="gzip")
 
@@ -1055,7 +1070,7 @@ class RenderFormerExampleScene:
                     with h5py.File(output_h5_buffer, "w") as f:
                         f.create_dataset("triangles", data=all_triangles.astype(np.float32), compression="gzip", compression_opts=9)
                         f.create_dataset("vn", data=all_vn.astype(np.float32), compression="gzip", compression_opts=9)
-                        f.create_dataset("texture", data=all_texture.astype(np.float32), compression="gzip", compression_opts=9)
+                        f.create_dataset("texture", data=all_texture.astype(np.float16), compression="gzip", compression_opts=9)
                         f.create_dataset("c2w", data=all_c2w.astype(np.float32), compression="gzip", compression_opts=9)
                         f.create_dataset("fov", data=all_fov.astype(np.float32), compression="gzip", compression_opts=9)
 
@@ -1524,7 +1539,7 @@ class RenderFormerFromJSON:
                         with h5py.File(output_h5_buffer, "w") as f:
                             f.create_dataset("triangles", data=all_triangles.astype(np.float32), compression="gzip", compression_opts=9)
                             f.create_dataset("vn", data=all_vn.astype(np.float32), compression="gzip", compression_opts=9)
-                            f.create_dataset("texture", data=all_texture.astype(np.float32), compression="gzip", compression_opts=9)
+                            f.create_dataset("texture", data=all_texture.astype(np.float16), compression="gzip", compression_opts=9)
                             f.create_dataset("c2w", data=all_c2w.astype(np.float32), compression="gzip", compression_opts=9)
                             f.create_dataset("fov", data=all_fov.astype(np.float32), compression="gzip", compression_opts=9)
 

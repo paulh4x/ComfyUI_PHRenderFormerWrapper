@@ -12,7 +12,54 @@ This repository contains a set of custom nodes for ComfyUI that provide a wrappe
 
 
 > [!WARNING]
-> **WORK IN PROGRESS & HELLO WORLD:** This project is my first "hello world" in contributing code of any kind and is currently under active development. It should be considered experimental. The model is in a very early stage and may be further developed later. I do not take responsibility if this breaks anything and do not plan to provide official support for it.
+> **WORK IN PROGRESS & HELLO WORLD:** This project is my first "hello world" in contributing code of any kind and is currently under active development. It should be considered experimental. The model is in a very early stage and may be further developed later. I do not take responsibility if this breaks anything and do not plan to provide official support for it. PLEASE BE AWARE THAT EVERYTHING HERE IS ENTIRELY VIBECODED.
+
+---
+
+### 🛠️ Installation
+
+#### Prerequisites
+
+-   **Git:** Required for cloning the repository and installing certain dependencies.
+-   **Python:** A Python version compatible with ComfyUI and PyTorch 2.0+.
+-   **PyTorch:** A compatible version of PyTorch must be installed for your hardware (NVIDIA CUDA or Apple Metal). This wrapper is tested with PyTorch 2.7.1 and CUDA 12.6.
+-   **ComfyUI:** A working installation of ComfyUI.
+
+#### Installation Steps
+
+1.  Navigate to your ComfyUI `custom_nodes` directory:
+    ```bash
+    cd ComfyUI/custom_nodes/
+    ```
+2.  Clone this repository:
+    ```bash
+    git clone https://github.com/your-github-username/ComfyUI_PHRenderFormerWrapper.git
+    ```
+3.  Navigate into the newly cloned directory:
+    ```bash
+    cd ComfyUI_PHRenderFormerWrapper
+    ```
+4.  Clone the official Microsoft RenderFormer repository into this directory. It **must** be named `renderformer`:
+    ```bash
+    git clone https://github.com/microsoft/renderformer.git renderformer
+    ```
+5.  Install the required Python packages for this wrapper:
+    ```bash
+    pip install -r requirements.txt
+    ```
+> [!IMPORTANT]
+> For owners of a **NVIDIA 50xx series GPU**, a dedicated requirements file is available. Please use the following command instead:
+> ```bash
+> pip install -r requirements_50xx.txt
+> ```
+6.  RenderFormer requires an additional plugin for handling HDR image formats. Run the following command to download it:
+    ```bash
+    python -c "import imageio; imageio.plugins.freeimage.download()"
+    ```
+7.  Restart ComfyUI.
+
+> [!NOTE]
+> For NVIDIA GPU users, the underlying RenderFormer library can optionally use **Flash Attention** for better performance. If you have it installed in your PyTorch environment, it should be used automatically.
 
 ---
 
@@ -70,9 +117,9 @@ For video, the workflow is similar. You would use a `RenderFormer Camera Target`
 
 ---
 
-### 🚀 Advanced Usage: Building Complex Scenes & Multi-Light Animations
+### 🚀 Advanced Usage: Building Complex Scenes & Animations
 
-For more complex projects, you can combine multiple meshes and create sophisticated camera and lighting animations. The `ph_renderformer_advanced_01.json` workflow demonstrates this by building a scene with several object groups and animating multiple lights simultaneously.
+For more complex projects, you can combine multiple meshes and create camera animations. The `ph_renderformer_advanced_01.json` workflow demonstrates this by building a scene with several objects and animating the camera.
 
 ```mermaid
 graph TD
@@ -82,34 +129,28 @@ graph TD
 
     subgraph "Step 2: Define Scene Elements"
         subgraph "Compose Meshes"
-            B1["Mesh Group 1 (e.g., Characters)"] --> C1["Mesh Combine 1"]
-            B2["Mesh Group 2 (e.g., Environment)"] --> C2["Mesh Combine 2"]
-            C1 --> C3["Final Mesh Combine"]
-            C2 --> C3
+            B1["Mesh 1 (Main Object)"] --> C["Mesh Combine"]
+            B2["Mesh 2 (Fox)"] --> C
+            B3["Mesh 3 (Spheres)"] --> C
+            B4["Mesh 4 (Background Walls)"] --> C
         end
 
         subgraph "Animate Camera"
             D1["RenderFormer Camera (Start)"] --> D2["RenderFormer Camera Target (End)"]
         end
         
-        subgraph "Animate Multiple Lights"
-            L1_Start["Light 1 (Start)"] --> L1_Target["Light 1 Target"]
-            L2_Start["Light 2 (Start)"] --> L2_Target["Light 2 Target"]
-            L1_Target --> LC["Lighting Combine"]
-            L2_Target --> LC
-        end
+        E["RenderFormer Lighting"]
     end
 
     subgraph "Step 3: Build Scene Sequence"
-        A --> F["RenderFormer Scene Builder"]
-        C3 -- MESH --> F
-        D1 -- required CAMERA --> F
-        D2 -- optional CAMERA_SEQUENCE --> F
-        LC -- LIGHTING & LIGHTING_SEQUENCE --> F
+        C --> F["RenderFormer Scene Builder"]
+        D2 -- CAMERA_SEQUENCE --> F
+        E --> F
     end
 
     subgraph "Step 4: Render (Sample)"
-        F -- SCENE_SEQUENCE --> G["RenderFormer Sampler"]
+        A --> G["RenderFormer Sampler"]
+        F -- SCENE_SEQUENCE --> G
     end
 
     subgraph "Step 5: Create & Save Video"
@@ -120,33 +161,28 @@ graph TD
     style A fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style B1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style B2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style C1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style C2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style C3 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style B3 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style B4 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style C fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style D1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style D2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style L1_Start fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style L2_Start fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style L1_Target fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style L2_Target fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style LC fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style E fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style F fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style G fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style H fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
     style I fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
 ```
 
-1.  **Compose Your Scene**: Build complex scenes by loading multiple `RenderFormer Mesh Loader` nodes. Group them logically using `RenderFormer Mesh Combine` nodes. You can even chain `Combine` nodes together for highly organized, large-scale scenes.
-2.  **Animate the Camera**: Define the starting view with a `RenderFormer Camera` node and the ending view with a `RenderFormer Camera Target` node.
-3.  **Animate Multiple Lights**:
-    *   For each light you want to animate, create a pair of `RenderFormer Lighting` (for the start state) and `RenderFormer Lighting Target` (for the end state) nodes.
-    *   Feed all the `Lighting Target` outputs into a single `RenderFormer Lighting Combine` node. This node intelligently gathers all start and end states.
-4.  **Build the Scene Sequence**:
-    *   Connect your final combined `MESH` to the `RenderFormer Scene Builder`.
-    *   Connect your starting `RenderFormer Camera` to the required `camera` input.
-    *   Connect your `RenderFormer Camera Target` to the optional `camera_sequence` input.
-    *   The `RenderFormer Lighting Combine` node provides two outputs. Connect its `LIGHTING` output to the required `lighting` input of the Scene Builder, and its `LIGHTING_SEQUENCE` output to the optional `lighting_sequence` input.
-5.  **Render and Save**: The `RenderFormer Sampler` will receive the `SCENE_SEQUENCE` and render all frames, which can then be saved as a video.
+1.  **Compose Your Scene**: Instead of using one large model, you can load multiple `RenderFormer Mesh Loader` nodes for different parts of your scene (e.g., characters, props, background elements).
+2.  **Combine Meshes**: Use one or more `RenderFormer Mesh Combine` nodes to merge all your individual meshes into a single `MESH` output. This creates a clean, organized workflow and makes it easy to manage complex scenes.
+3.  **Animate the Camera**:
+    *   Define the starting view with a `RenderFormer Camera` node.
+    *   Connect its `CAMERA` output to the `start_camera` input of a `RenderFormer Camera Target` node.
+    *   In the `Camera Target` node, define the end position, look-at point, and FOV for your animation, along with the total number of frames. This generates a `CAMERA_SEQUENCE`.
+4.  **Build the Scene Sequence**: Connect your combined `MESH`, the `CAMERA_SEQUENCE`, and your `LIGHTING` to the `RenderFormer Scene Builder`. It will automatically create a sequence of scenes, one for each frame of the animation.
+5.  **Render and Save**:
+    *   The `RenderFormer Sampler` will receive the `SCENE_SEQUENCE` and render all frames, outputting them as an `IMAGES` batch.
+    *   Connect this batch to a `Create Video` node (or another video-handling node) and then to a `Save Video` node to get your final animation file.
 
 ---
 
@@ -174,71 +210,24 @@ This project is under active development. Here is a summary of the progress so f
 
 #### ✅ Done
 
--   **Core Rendering Pipeline:** All essential nodes for building and rendering a static 3D scene are implemented.
--   **In-Memory Processing:** The entire scene preparation pipeline, from loading meshes to generating the final HDF5 data, is now handled in-memory. This significantly improves performance by avoiding slow disk I/O.
--   **Video Rendering:** A complete, dedicated workflow for video rendering is in place.
--   **Light Animation:** Full animation support for lights, including position, rotation, scale, and emission.
--   **Advanced Utilities:** Nodes for mesh combination, remeshing, and JSON-based scene loading are functional.
--   **Custom UI Elements:** The nodes feature custom colors for better visual organization, and progress bars are implemented for long-running operations.
--   **Bug Fixes:** Addressed various bugs related to file handling, data types, and temporary file management.
--   **Proper RGB Values for diffuse Color:** Colorpicker support for white-values for more variety of colors including.
+-   [x] **Core Rendering Pipeline:** All essential nodes for building and rendering a static 3D scene are implemented.
+-   [x] **In-Memory Processing:** The entire scene preparation pipeline, from loading meshes to generating the final HDF5 data, is now handled in-memory. This significantly improves performance by avoiding slow disk I/O.
+-   [x] **Video Rendering:** A complete, dedicated workflow for video rendering is in place.
+-   [x] **Light Animation:** Full animation support for lights, including position, rotation, scale, and emission.
+-   [x] **Advanced Utilities:** Nodes for mesh combination, remeshing, and JSON-based scene loading are functional.
+-   [x] **Custom UI Elements:** The nodes feature custom colors for better visual organization, and progress bars are implemented for long-running operations.
+-   [x] **Bug Fixes:** Addressed various bugs related to file handling, data types, and temporary file management.
+-   [x] **Proper RGB Values for diffuse Color:** Colorpicker support for white-values for more variety of colors including.
+-   [x] **Randomize Color Fix:** The `RandomizeColors` node now correctly applies colors in all modes. The original `per-triangle` mode was renamed to `per-shading` for clarity, and a new `per-triangle` mode was added for true per-face coloring.
 
 #### 📋 To Do
 
--   [ ] **Randomize Color Fix:** Fix `RandomizeColors` node, will produce the expected visual output.
 -   [ ] **Animation Flickering:** Investigate and fix flickering in animations, especially for objects with highly reflective materials.
 -   [ ] **Mesh Format Support:** Add support for loading `.glb` and `.fbx` files, including their materials and textures.
 -   [ ] **Mesh Animation:** Implement animation capabilities for `MESH` properties (translation, rotation, scale).
 -   [ ] **Camera Adoption:** Integrate with the `Load 3D` core node to adopt its camera transformations.
 -   [ ] **Material Presets:** Create a system for saving and loading material presets.
 -   [ ] **Public Release:** Prepare for a more stable, public release with better documentation and examples.
-
----
-
-### 🛠️ Installation
-
-#### Prerequisites
-
--   **Git:** Required for cloning the repository and installing certain dependencies.
--   **Python:** A Python version compatible with ComfyUI and PyTorch 2.0+.
--   **PyTorch:** A compatible version of PyTorch must be installed for your hardware (NVIDIA CUDA or Apple Metal). This wrapper is tested with PyTorch 2.7.1 and CUDA 12.6.
--   **ComfyUI:** A working installation of ComfyUI.
-
-#### Installation Steps
-
-1.  Navigate to your ComfyUI `custom_nodes` directory:
-    ```bash
-    cd ComfyUI/custom_nodes/
-    ```
-2.  Clone this repository:
-    ```bash
-    git clone https://github.com/your-github-username/ComfyUI_PHRenderFormerWrapper.git
-    ```
-3.  Navigate into the newly cloned directory:
-    ```bash
-    cd ComfyUI_PHRenderFormerWrapper
-    ```
-4.  Clone the official Microsoft RenderFormer repository into this directory. It **must** be named `renderformer`:
-    ```bash
-    git clone https://github.com/microsoft/renderformer.git renderformer
-    ```
-5.  Install the required Python packages for this wrapper:
-    ```bash
-    pip install -r requirements.txt
-    ```
-> [!IMPORTANT]
-> For owners of a **NVIDIA 50xx series GPU**, a dedicated requirements file is available. Please use the following command instead:
-> ```bash
-> pip install -r requirements_50xx.txt
-> ```
-6.  RenderFormer requires an additional plugin for handling HDR image formats. Run the following command to download it:
-    ```bash
-    python -c "import imageio; imageio.plugins.freeimage.download()"
-    ```
-7.  Restart ComfyUI.
-
-> [!NOTE]
-> For NVIDIA GPU users, the underlying RenderFormer library can optionally use **Flash Attention** for better performance. If you have it installed in your PyTorch environment, it should be used automatically.
 
 ---
 
@@ -264,7 +253,7 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 -   **RenderFormer Mesh Combine**: Combines multiple `MESH` outputs into a single object list.
 -   **RenderFormer Lighting Combine**: A powerful node that enables multi-light animation. It accepts any combination of static lights (`LIGHTING`) and animated lights (`LIGHTING_SEQUENCE`), and outputs a single, unified `LIGHTING_SEQUENCE` ready for the Scene Builder. It also outputs the `start_frame_lighting` separately for a direct, convenient connection.
 -   **RenderFormer Remesh**: Simplifies the geometry of a mesh to a target face count using `pymeshlab`.
--   **RenderFormer Random Colors**: Applies random vertex colors to a mesh for creative effects or debugging.
+-   **RenderFormer Random Colors**: Applies random colors to a mesh. It offers three modes: `per-object` (one color for the whole object), `per-shading` (uses the RenderFormer backend to color based on shading groups), and `per-triangle` (assigns a unique color to every face).
 
 #### Advanced & Experimental
 -   **RenderFormer From JSON**: Loads a scene from a JSON definition, allowing for more complex and customized setups based on the original RenderFormer format.
@@ -273,6 +262,11 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 ---
 
 ### 📜 Version History
+
+#### Version 0.3.5 - Bug Fixes & Stability
+-   **Fix:** Resolved a critical `WrongTypeError` in the `RenderFormerRandomizeColors` node. The `random_diffuse_type` was being set to an incorrect string value (`"per triangle"`), which has now been corrected to the valid literal (`"per-triangle"`).
+-   **Fix:** The `per-shading` mode in the `RenderFormerRandomizeColors` node has been updated to use the correct literal `"per-shading-group"` for consistency with the scene configuration, ensuring it functions as expected.
+-   **Change:** The `seed` input on the `RenderFormerRandomizeColors` node is now correctly limited to a 10-digit integer.
 
 #### Version 0.5.0 - Workflow Optimization
 -   **Workflow:** The animation workflow has been significantly simplified and made more robust. The `RenderFormerSceneBuilder` now has a **required** `lighting` input that explicitly defines the start-frame lighting.
