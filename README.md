@@ -197,6 +197,36 @@ graph TD
 
 ---
 
+### 📦 Nodes
+
+This wrapper provides a comprehensive set of nodes to build 3D scenes.
+
+#### Core Pipeline
+-   **RenderFormer Model Loader**: Loads a specified RenderFormer model from Hugging Face or a local path.
+-   **RenderFormer Scene Builder**: Assembles a scene from meshes, lighting, and camera inputs. It can handle both single camera inputs for static images and camera sequences for creating animations.
+-   **RenderFormer Sampler**: Executes the RenderFormer pipeline on a scene or a sequence of scenes. It intelligently handles both single images and image batches for video, producing the final rendered output.
+
+#### Scene Components
+-   **RenderFormer Mesh Loader**: Loads a 3D mesh file (e.g., `.obj`, `.glb`). This node is also used to define an object's material properties and transformations.
+-   **RenderFormer Camera**: Defines the camera's position, look-at target, and field of view (FOV).
+-   **RenderFormer Lighting**: Creates a configurable emissive light source.
+
+#### Animation
+-   **RenderFormer Camera Target**: Creates a camera animation sequence by defining a start and end camera state (position, look-at, FOV).
+-   **RenderFormer Lighting Target**: Creates a light animation sequence by defining a start and end light state (position, rotation, scale, and emission).
+
+#### Utilities
+-   **RenderFormer Mesh Combine**: Combines multiple `MESH` outputs into a single object list.
+-   **RenderFormer Lighting Combine**: A powerful node that enables multi-light animation. It accepts any combination of static lights (`LIGHTING`) and animated lights (`LIGHTING_SEQUENCE`), and outputs a single, unified `LIGHTING_SEQUENCE` ready for the Scene Builder. It also outputs the `start_frame_lighting` separately for a direct, convenient connection.
+-   **RenderFormer Remesh**: Simplifies the geometry of a mesh to a target face count using `pymeshlab`.
+-   **RenderFormer Random Colors**: Applies random colors to a mesh. It offers three modes: `per-object` (one color for the whole object), `per-shading` (uses the RenderFormer backend to color based on shading groups), and `per-triangle` (assigns a unique color to every face).
+
+#### Advanced & Experimental
+-   **RenderFormer From JSON**: Loads a scene from a JSON definition, allowing for more complex and customized setups based on the original RenderFormer format.
+-   **RenderFormer Example Scene**: A test node to quickly load one of the official RenderFormer example scenes.
+
+---
+
 ### 🧱 Model Limits
 
 -   **Meshes:** RenderFormer can handle scenes of up to 8192 polygons.
@@ -231,44 +261,14 @@ This project is under active development. Here is a summary of the progress so f
 
 ---
 
-### 📦 Nodes
-
-This wrapper provides a comprehensive set of nodes to build 3D scenes.
-
-#### Core Pipeline
--   **RenderFormer Model Loader**: Loads a specified RenderFormer model from Hugging Face or a local path.
--   **RenderFormer Scene Builder**: Assembles a scene from meshes, lighting, and camera inputs. It can handle both single camera inputs for static images and camera sequences for creating animations.
--   **RenderFormer Sampler**: Executes the RenderFormer pipeline on a scene or a sequence of scenes. It intelligently handles both single images and image batches for video, producing the final rendered output.
-
-#### Scene Components
--   **RenderFormer Mesh Loader**: Loads a 3D mesh file (e.g., `.obj`, `.glb`). This node is also used to define an object's material properties and transformations.
--   **RenderFormer Camera**: Defines the camera's position, look-at target, and field of view (FOV).
--   **RenderFormer Lighting**: Creates a configurable emissive light source.
-
-#### Animation
--   **RenderFormer Camera Target**: Creates a camera animation sequence by defining a start and end camera state (position, look-at, FOV).
--   **RenderFormer Lighting Target**: Creates a light animation sequence by defining a start and end light state (position, rotation, scale, and emission).
-
-#### Utilities
--   **RenderFormer Mesh Combine**: Combines multiple `MESH` outputs into a single object list.
--   **RenderFormer Lighting Combine**: A powerful node that enables multi-light animation. It accepts any combination of static lights (`LIGHTING`) and animated lights (`LIGHTING_SEQUENCE`), and outputs a single, unified `LIGHTING_SEQUENCE` ready for the Scene Builder. It also outputs the `start_frame_lighting` separately for a direct, convenient connection.
--   **RenderFormer Remesh**: Simplifies the geometry of a mesh to a target face count using `pymeshlab`.
--   **RenderFormer Random Colors**: Applies random colors to a mesh. It offers three modes: `per-object` (one color for the whole object), `per-shading` (uses the RenderFormer backend to color based on shading groups), and `per-triangle` (assigns a unique color to every face).
-
-#### Advanced & Experimental
--   **RenderFormer From JSON**: Loads a scene from a JSON definition, allowing for more complex and customized setups based on the original RenderFormer format.
--   **RenderFormer Example Scene**: A test node to quickly load one of the official RenderFormer example scenes.
-
----
-
 ### 📜 Version History
 
-#### Version 0.3.5 - Bug Fixes & Stability
+#### Version 0.3.15 - Bug Fixes & Stability
 -   **Fix:** Resolved a critical `WrongTypeError` in the `RenderFormerRandomizeColors` node. The `random_diffuse_type` was being set to an incorrect string value (`"per triangle"`), which has now been corrected to the valid literal (`"per-triangle"`).
 -   **Fix:** The `per-shading` mode in the `RenderFormerRandomizeColors` node has been updated to use the correct literal `"per-shading-group"` for consistency with the scene configuration, ensuring it functions as expected.
 -   **Change:** The `seed` input on the `RenderFormerRandomizeColors` node is now correctly limited to a 10-digit integer.
 
-#### Version 0.5.0 - Workflow Optimization
+#### Version 0.3.3 - Workflow Optimization
 -   **Workflow:** The animation workflow has been significantly simplified and made more robust. The `RenderFormerSceneBuilder` now has a **required** `lighting` input that explicitly defines the start-frame lighting.
 -   **Workflow:** The `end_lighting` input on the `Scene Builder` has been **removed**. All lighting animation is now handled by the optional `lighting_sequence` input, which provides the end-frame state.
 -   **Data Flow:** The `RenderFormerLightingTarget` and `RenderFormerLightingCombine` nodes have been updated to output a standardized `LIGHTING_SEQUENCE` dictionary (`{ "start_lights": [...], "end_lights": [...] }`), ensuring consistent data flow.
