@@ -9,10 +9,21 @@
 
 This repository contains a set of custom nodes for ComfyUI that provide a wrapper for Microsoft's **RenderFormer** model. It allows you to render complex 3D scenes (see **Limits**) with physically-based materials and global illumination directly within the ComfyUI interface.
 
-
+---
 
 > [!WARNING]
 > **WORK IN PROGRESS & HELLO WORLD:** This project is my first "hello world" in contributing code of any kind and is currently under active development. It should be considered experimental. The model is in a very early stage and may be further developed later. I do not take responsibility if this breaks anything and do not plan to provide official support for it. PLEASE BE AWARE THAT EVERYTHING HERE IS ENTIRELY VIBECODED.
+
+---
+
+### 🚀 Features
+
+-   **🎨 End-to-End Rendering:** Load 3D models, define materials, set up cameras, and render—all within ComfyUI.
+-   **⚙️ Modular Node-Based Workflow:** Each step of the rendering pipeline is a separate node, allowing for flexible and complex setups.
+-   **🎥 Animation & Video:** Create camera and light animations by interpolating between keyframes. The nodes output image batches compatible with ComfyUI's native video-saving nodes.
+-   **🔧 Advanced Mesh Processing:** Includes nodes for loading, combining, remeshing, and applying simple color randomization to your 3D assets.
+-   **💡 Lighting and Material Control:** Easily add and combine multiple light sources and control PBR material properties like diffuse, specular, roughness, and emission.
+-   **↔️ Full Transformation Control:** Apply translation, rotation, and scaling to any object or light in the scene.
 
 ---
 
@@ -183,17 +194,6 @@ graph TD
 5.  **Render and Save**:
     *   The `RenderFormer Sampler` will receive the `SCENE_SEQUENCE` and render all frames, outputting them as an `IMAGES` batch.
     *   Connect this batch to a `Create Video` node (or another video-handling node) and then to a `Save Video` node to get your final animation file.
-
----
-
-### 🚀 Features
-
--   **🎨 End-to-End Rendering:** Load 3D models, define materials, set up cameras, and render—all within ComfyUI.
--   **⚙️ Modular Node-Based Workflow:** Each step of the rendering pipeline is a separate node, allowing for flexible and complex setups.
--   **🎥 Animation & Video:** Create camera and light animations by interpolating between keyframes. The nodes output image batches compatible with ComfyUI's native video-saving nodes.
--   **🔧 Advanced Mesh Processing:** Includes nodes for loading, combining, remeshing, and applying simple color randomization to your 3D assets.
--   **💡 Lighting and Material Control:** Easily add and combine multiple light sources and control PBR material properties like diffuse, specular, roughness, and emission.
--   **↔️ Full Transformation Control:** Apply translation, rotation, and scaling to any object or light in the scene.
 
 ---
 
