@@ -263,7 +263,7 @@ This project is under active development. Here is a summary of the progress so f
 
 ### 📜 Version History
 
-#### Version 0.3.15 - Bug Fixes & Stability
+#### Version 0.3.35 - Bug Fixes & Stability
 -   **Fix:** Resolved a critical `WrongTypeError` in the `RenderFormerRandomizeColors` node. The `random_diffuse_type` was being set to an incorrect string value (`"per triangle"`), which has now been corrected to the valid literal (`"per-triangle"`).
 -   **Fix:** The `per-shading` mode in the `RenderFormerRandomizeColors` node has been updated to use the correct literal `"per-shading-group"` for consistency with the scene configuration, ensuring it functions as expected.
 -   **Change:** The `seed` input on the `RenderFormerRandomizeColors` node is now correctly limited to a 10-digit integer.
