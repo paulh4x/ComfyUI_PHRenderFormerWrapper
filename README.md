@@ -140,16 +140,22 @@ graph TD
 
     subgraph "II. Scene Inputs & Composition"
         InputMeshes["LoadMesh (Multiple)"] --> Process["Process Meshes (Remesh, etc.)"] --> MeshCombine["RenderFormerMeshCombine"]
-        Camera["RenderFormerCamera (Static)"]
-        CameraAnim["PHRenderFormerCameraTarget (Animated)"]
-        Lighting["RenderFormerLighting"]
+        
+        subgraph "Camera Setup"
+            Camera["RenderFormerCamera (Start)"] --> CameraAnim["PHRenderFormerCameraTarget (End)"]
+        end
+        
+        subgraph "Lighting Setup"
+            Lighting["RenderFormerLighting (Start)"] --> LightAnim["RenderFormerLightingTarget (End)"]
+        end
     end
 
-    subgraph "III. Scene Building"
+    subgraph "III. Unified Scene Building"
         MeshCombine --> SceneBuilder["RenderFormerSceneBuilder"]
         Camera --> SceneBuilder
-        CameraAnim -- SEQUENCE --> SceneBuilder
         Lighting --> SceneBuilder
+        CameraAnim -- CAM_SEQUENCE --> SceneBuilder
+        LightAnim -- LIGHT_SEQUENCE --> SceneBuilder
     end
 
     subgraph "IV. Parallel Rendering & Output"
@@ -173,6 +179,7 @@ graph TD
     style Camera fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style CameraAnim fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style Lighting fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style LightAnim fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style SceneBuilder fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style ImgGenerator fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style VidSampler fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
@@ -184,11 +191,12 @@ graph TD
 The general flow can be simplified as follows:
 
 1.  **Asset Loading and Composition**: Multiple meshes are loaded, processed (e.g., remeshed), and then merged into a single master `MESH` object using `RenderFormerMeshCombine`.
-2.  **Scene Building**: The unified `RenderFormerSceneBuilder` node intelligently assembles the final scene. It accepts the combined `MESH`, `LIGHTING`, and camera inputs. It can handle both a static `CAMERA` and an animated `CAMERA_SEQUENCE`, automatically producing either a single `SCENE` or a `SCENE_SEQUENCE` as needed.
-3.  **Parallel Rendering**: The workflow splits to render both outputs simultaneously:
+2.  **Camera & Lighting Setup**: The workflow supports both static and animated cameras/lights. A `RenderFormerCamera (Start)` node defines the initial view, which is fed into a `PHRenderFormerCameraTarget (End)` node to create an animation sequence. The same principle applies to lighting with `RenderFormerLighting (Start)` and `RenderFormerLightingTarget (End)`.
+3.  **Unified Scene Building**: The `RenderFormerSceneBuilder` node acts as the central hub. It intelligently assembles the final scene by taking in the combined `MESH`, the start `CAMERA` and `LIGHTING` for the static path, and the animated `SEQUENCE` outputs for the video path. It produces both a single `SCENE` (for images) and a `SCENE_SEQUENCE` (for videos).
+4.  **Parallel Rendering**: The workflow splits to render both outputs simultaneously:
     *   The `SCENE` output is fed into the `RenderFormerGenerator` to create a static image.
     *   The `SCENE_SEQUENCE` output is fed into the `PHRenderFormerVideoSampler` to create an animated video.
-4.  **Saving**: The final image and video are saved using the standard `SaveImage` and `SaveVideo` nodes.
+5.  **Saving**: The final image and video are saved using the standard `SaveImage` and `SaveVideo` nodes.
 
 ---
 
