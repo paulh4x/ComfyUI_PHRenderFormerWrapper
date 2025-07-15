@@ -340,3 +340,7 @@ This project would not be possible without the foundational work of others.
 -   **ComfyUI_Fill-Example-Nodes**
     A huge thank you to **filliptm** for creating the `ComfyUI_Fill-Example-Nodes` repository. The advanced color picker in this project was implemented by adapting the excellent example code provided in that repo. It was an essential learning resource for understanding how to build custom UI elements in ComfyUI.
     -   [ComfyUI_Fill-Example-Nodes GitHub](https://github.com/filliptm/ComfyUI_Fill-Example-Nodes)
+
+### ⚖️ License
+
+<a href="https://github.com/paulh4x/ComfyUI_PHRenderFormerWrapper">ComfyUI_PHRenderFormerWrapper</a> © 2025 by <a href="https://www.linkedin.com/in/paul-hansen-410695b6/">Paul Hansen</a> is licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>
