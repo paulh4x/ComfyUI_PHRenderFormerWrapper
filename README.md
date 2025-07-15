@@ -44,7 +44,7 @@ This repository contains a set of custom nodes for ComfyUI that provide a wrappe
     ```
 2.  Clone this repository:
     ```bash
-    git clone https://github.com/your-github-username/ComfyUI_PHRenderFormerWrapper.git
+    git clone https://github.com/paulh4x/ComfyUI_PHRenderFormerWrapper.git
     ```
 3.  Navigate into the newly cloned directory:
     ```bash
@@ -250,19 +250,25 @@ This project is under active development. Here is a summary of the progress so f
 -   [x] **Bug Fixes:** Addressed various bugs related to file handling, data types, and temporary file management.
 -   [x] **Proper RGB Values for diffuse Color:** Colorpicker support for white-values for more variety of colors including.
 -   [x] **Randomize Color Fix:** The `RandomizeColors` node now correctly applies colors in all modes. The original `per-triangle` mode was renamed to `per-shading` for clarity, and a new `per-triangle` mode was added for true per-face coloring.
+-   [x] **Mesh Animation:** Implemented animation capabilities for `MESH` properties (translation, rotation, scale) and materials (diffuse, specular, roughness).
+-   [x] **Mesh Animation:** Add multi mesh animation for complex movement
+-   [x] **Public Release:** Prepare for a more stable, public release with better documentation and examples.
 
 #### 📋 To Do
 
 -   [ ] **Animation Flickering:** Investigate and fix flickering in animations, especially for objects with highly reflective materials.
 -   [ ] **Mesh Format Support:** Add support for loading `.glb` and `.fbx` files, including their materials and textures.
--   [x] **Mesh Animation:** Implemented animation capabilities for `MESH` properties (translation, rotation, scale) and materials (diffuse, specular, roughness).
 -   [ ] **Camera Adoption:** Integrate with the `Load 3D` core node to adopt its camera transformations.
 -   [ ] **Material Presets:** Create a system for saving and loading material presets.
--   [ ] **Public Release:** Prepare for a more stable, public release with better documentation and examples.
+-   [ ] **Overall Animation:** Implement multiple keyframes and different interpolation options (bezier?) for complexer animations
+
 
 ---
 
 ### 📜 Version History
+
+#### Version 0.5.0 - Multi Mesh Animation & Public Release
+-   **Feature: Mesh & Material Animation:** Multi object support for animations now integrated.
 
 #### Version 0.4.0 - Mesh Animation
 -   **Feature: Mesh & Material Animation:** A complete animation workflow for meshes has been implemented.
