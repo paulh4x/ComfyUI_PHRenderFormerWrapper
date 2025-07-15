@@ -130,70 +130,122 @@ For video, the workflow is similar. You would use a `RenderFormer Camera Target`
 
 ### 🚀 Advanced Usage: Building Complex Scenes & Animations
 
-For more complex projects, you can combine multiple meshes and create camera animations. The `ph_renderformer_advanced_01.json` workflow demonstrates this by building a scene with several objects and animating the camera.
+The `ph_renderformer_advanced_01.json` workflow demonstrates a powerful setup that handles both **static image rendering** and **video animation** in parallel. It showcases how to compose a complex scene from multiple meshes, apply post-processing, and generate both a high-resolution still and an animated sequence from the same set of assets.
 
 ```mermaid
 graph TD
-    subgraph "Step 1: Load Model"
-        A["RenderFormer Model Loader"]
+    subgraph "I. Model"
+        ModelLoader["RenderFormerModelLoader"]
     end
 
-    subgraph "Step 2: Define Scene Elements"
-        subgraph "Compose Meshes"
-            B1["Mesh 1 (Main Object)"] --> C["Mesh Combine"]
-            B2["Mesh 2 (Fox)"] --> C
-            B3["Mesh 3 (Spheres)"] --> C
-            B4["Mesh 4 (Background Walls)"] --> C
+    subgraph "II. Inputs"
+        subgraph "A. Main Object"
+            Input3D["Load3D"] --> MainMesh["LoadMesh (Cabin)"]
+            MainMesh --> Remesh["RemeshMesh"] --> Randomize["RandomizeColors"]
         end
 
-        subgraph "Animate Camera"
-            D1["RenderFormer Camera (Start)"] --> D2["RenderFormer Camera Target (End)"]
+        subgraph "B. Additional Objects"
+            MeshFox["LoadMesh (Fox)"]
+            MeshSphereGreen["LoadMesh (Sphere Green)"]
+            
+            subgraph "Sphere Group (Combined)"
+                MeshSphere1["LoadMesh (Sphere)"] --> SphereCombine["RenderFormerMeshCombine"]
+                MeshSphere2["LoadMesh (Sphere)"] --> SphereCombine
+                MeshSphere3["LoadMesh (Sphere)"] --> SphereCombine
+                MeshSphere4["LoadMesh (Sphere)"] --> SphereCombine
+            end
+
+            subgraph "Background Group (Combined)"
+                MeshWall0["LoadMesh (Wall 0)"] --> BGCombine["RenderFormerMeshCombine"]
+                MeshWall1["LoadMesh (Wall 1)"] --> BGCombine
+                MeshWall2["LoadMesh (Wall 2)"] --> BGCombine
+                MeshPlane["LoadMesh (Plane)"] --> BGCombine
+            end
+        end
+
+        subgraph "C. Camera & Lighting"
+            Camera["RenderFormerCamera"] --> CameraAnim["PHRenderFormerCameraTarget"]
+            Light["RenderFormerLighting"] --> LightCombine["RenderFormerLightingCombine"]
+        end
+    end
+
+    subgraph "III. Scene Assembly"
+        subgraph "Combine All Meshes"
+            Randomize --> FinalMeshCombine["RenderFormerMeshCombine"]
+            MeshFox --> FinalMeshCombine
+            MeshSphereGreen --> FinalMeshCombine
+            SphereCombine --> FinalMeshCombine
+            BGCombine --> FinalMeshCombine
         end
         
-        E["RenderFormer Lighting"]
+        subgraph "Build Image Scene (Static)"
+            FinalMeshCombine --> ImgSceneBuilder["RenderFormerSceneBuilder"]
+            Camera --> ImgSceneBuilder
+            LightCombine --> ImgSceneBuilder
+        end
+
+        subgraph "Build Video Scene (Animated)"
+            FinalMeshCombine --> VidSceneBuilder["RenderFormerVideoSceneBuilder"]
+            CameraAnim -- CAMERA_SEQUENCE --> VidSceneBuilder
+            LightCombine --> VidSceneBuilder
+        end
     end
 
-    subgraph "Step 3: Build Scene Sequence"
-        C --> F["RenderFormer Scene Builder"]
-        D2 -- CAMERA_SEQUENCE --> F
-        E --> F
+    subgraph "IV. Processing & Output"
+        subgraph "Image Rendering"
+            ModelLoader --> ImgGenerator["RenderFormerGenerator"]
+            ImgSceneBuilder --> ImgGenerator
+            ImgGenerator --> SaveImg["SaveImage"]
+        end
+
+        subgraph "Video Rendering"
+            ModelLoader --> VidSampler["PHRenderFormerVideoSampler"]
+            VidSceneBuilder -- SCENE_SEQUENCE --> VidSampler
+            VidSampler -- IMAGES --> CreateVid["CreateVideo"] --> SaveVid["SaveVideo"]
+        end
     end
 
-    subgraph "Step 4: Render (Sample)"
-        A --> G["RenderFormer Sampler"]
-        F -- SCENE_SEQUENCE --> G
-    end
-
-    subgraph "Step 5: Create & Save Video"
-        G -- IMAGES --> H["Create Video"]
-        H --> I["Save Video"]
-    end
-
-    style A fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style B1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style B2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style B3 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style B4 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style C fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style D1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style D2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style E fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style F fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style G fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style H fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
-    style I fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
+    style ModelLoader fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Input3D fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
+    style MainMesh fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Remesh fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Randomize fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshFox fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshSphereGreen fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshSphere1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshSphere2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshSphere3 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshSphere4 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style SphereCombine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshWall0 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshWall1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshWall2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshPlane fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style BGCombine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Camera fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style CameraAnim fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Light fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style LightCombine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style FinalMeshCombine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style ImgSceneBuilder fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style VidSceneBuilder fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style ImgGenerator fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style VidSampler fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style SaveImg fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
+    style CreateVid fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
+    style SaveVid fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
 ```
 
-1.  **Compose Your Scene**: Instead of using one large model, you can load multiple `RenderFormer Mesh Loader` nodes for different parts of your scene (e.g., characters, props, background elements).
-2.  **Combine Meshes**: Use one or more `RenderFormer Mesh Combine` nodes to merge all your individual meshes into a single `MESH` output. This creates a clean, organized workflow and makes it easy to manage complex scenes.
-3.  **Animate the Camera**:
-    *   Define the starting view with a `RenderFormer Camera` node.
-    *   Connect its `CAMERA` output to the `start_camera` input of a `RenderFormer Camera Target` node.
-    *   In the `Camera Target` node, define the end position, look-at point, and FOV for your animation, along with the total number of frames. This generates a `CAMERA_SEQUENCE`.
-4.  **Build the Scene Sequence**: Connect your combined `MESH`, the `CAMERA_SEQUENCE`, and your `LIGHTING` to the `RenderFormer Scene Builder`. It will automatically create a sequence of scenes, one for each frame of the animation.
-5.  **Render and Save**:
-    *   The `RenderFormer Sampler` will receive the `SCENE_SEQUENCE` and render all frames, outputting them as an `IMAGES` batch.
-    *   Connect this batch to a `Create Video` node (or another video-handling node) and then to a `Save Video` node to get your final animation file.
+1.  **Load and Process Assets**:
+    *   The main object (a cabin) is loaded via the core `Load3D` node, then passed to a `LoadMesh` node. Its geometry is simplified with `RemeshMesh` and its colors are randomized with `RandomizeColors`.
+    *   Multiple other meshes (a fox, spheres, background walls) are loaded and grouped together using `RenderFormerMeshCombine` nodes.
+2.  **Combine All Meshes**: All processed and grouped meshes are merged into a final, single `MESH` output using another `RenderFormerMeshCombine` node. This master mesh list is the foundation for both the image and video outputs.
+3.  **Create Parallel Scenes**:
+    *   **For the Static Image**: The combined mesh, a static `RenderFormerCamera`, and the scene lighting are fed into a `RenderFormerSceneBuilder`.
+    *   **For the Video**: The same combined mesh and lighting are used, but this time they are paired with a `CAMERA_SEQUENCE` from a `PHRenderFormerCameraTarget` node. These are fed into a `RenderFormerVideoSceneBuilder`.
+4.  **Render and Save Both Outputs**:
+    *   The static scene is rendered by `RenderFormerGenerator` and saved with `SaveImage`.
+    *   The video scene sequence is rendered by `PHRenderFormerVideoSampler`, converted into a video file with `CreateVideo`, and finally saved with `SaveVideo`.
 
 ---
 
