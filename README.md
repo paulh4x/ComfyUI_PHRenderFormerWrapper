@@ -125,62 +125,82 @@ For video, the workflow is similar. You would use a `RenderFormer Camera Target`
 
 ### 🚀 Advanced Usage: Building Complex Scenes & Animations
 
-The `ph_renderformer_advanced_01.json` workflow demonstrates a powerful setup that handles both **static image rendering** and **video animation** in parallel. It showcases how to compose a complex scene from multiple meshes and generate both a still and an animated sequence from the same set of assets.
+The `ph_renderformer_advanced_01.json` workflow is a powerful example that demonstrates how to build a complex scene with multiple, independent objects and generate both a static image and an animated video from a single, unified pipeline.
 
 ```mermaid
-graph TD
+graph LR
     subgraph "I. Model"
-        ModelLoader["RenderFormerModelLoader"]
+        ModelLoader["RenderFormer Model Loader"]
     end
 
-    subgraph "II. Scene Inputs & Composition"
-        InputMeshes["LoadMesh (Multiple)"] --> Process["Process Meshes (Remesh, etc.)"] --> MeshCombine["RenderFormerMeshCombine"]
-        
-        subgraph "Camera Setup"
-            Camera["RenderFormerCamera (Start)"] --> CameraAnim["PHRenderFormerCameraTarget (End)"]
+    subgraph "II. Scene Inputs"
+        subgraph "A. Meshes"
+            direction LR
+            Mesh1["LoadMesh (Processed)"] --> Remesh["Remesh / Randomize"] --> Combine["RenderFormerMeshCombine"]
+            Mesh2["LoadMesh (Direct)"] --> Combine
         end
         
-        subgraph "Lighting Setup"
-            Lighting["RenderFormerLighting (Start)"] --> LightAnim["RenderFormerLightingTarget (End)"]
+        subgraph "B. Camera"
+            direction TD
+            CamStart["RenderFormerCamera (Start)"] --> CamEnd["PHRenderFormerCameraTarget (End)"]
+        end
+
+        subgraph "C. Lighting"
+            direction TD
+            LightStart["RenderFormerLighting (Start)"] --> LightEnd["RenderFormerLightingTarget (End)"]
         end
     end
 
-    subgraph "III. Unified Scene Building"
-        MeshCombine --> SceneBuilder["RenderFormerSceneBuilder"]
-        Camera --> SceneBuilder
-        Lighting --> SceneBuilder
-        CameraAnim -- CAM_SEQUENCE --> SceneBuilder
-        LightAnim -- LIGHT_SEQUENCE --> SceneBuilder
+    subgraph "III. Scene Assembly"
+        Combine --> SceneBuilder["RenderFormerSceneBuilder"]
+        CamStart --> SceneBuilder
+        CamEnd -- CAM_SEQUENCE --> SceneBuilder
+        LightStart --> SceneBuilder
+        LightEnd -- LIGHT_SEQUENCE --> SceneBuilder
     end
 
-    subgraph "IV. Rendering & Unified Output"
-        ModelLoader --> VidSampler["PHRenderFormerVideoSampler"]
-        SceneBuilder -- SCENE_SEQUENCE --> VidSampler
-        VidSampler -- IMAGES --> SaveImg["SaveImage"]
-        VidSampler -- IMAGES --> CreateVid["CreateVideo"] --> SaveVid["SaveVideo"]
+    subgraph "IV. Rendering & Output"
+        Sampler["PHRenderFormerVideoSampler"]
+        ModelLoader --> Sampler
+        SceneBuilder -- SCENE_SEQUENCE --> Sampler
+        Sampler -- IMAGES --> SaveImg["Save Image"]
+        Sampler -- IMAGES --> CreateVid["Create Video"] --> SaveVid["Save Video"]
     end
 
     style ModelLoader fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style InputMeshes fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style Process fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshCombine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style Camera fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style CameraAnim fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style Lighting fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style LightAnim fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Mesh1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Mesh2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Remesh fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Combine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style CamStart fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style CamEnd fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style LightStart fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style LightEnd fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style SceneBuilder fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style VidSampler fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Sampler fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style SaveImg fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
     style CreateVid fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
     style SaveVid fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
 ```
 
-The general flow can be simplified as follows:
+This workflow is designed for maximum flexibility and showcases several key features of the node pack:
 
-1.  **Asset Loading and Composition**: Multiple meshes are loaded, processed (e.g., remeshed), and then merged into a single master `MESH` object using `RenderFormerMeshCombine`.
-2.  **Camera & Lighting Setup**: The workflow supports both static and animated cameras/lights. A `RenderFormerCamera (Start)` node defines the initial view, which is fed into a `PHRenderFormerCameraTarget (End)` node to create an animation sequence. The same principle applies to lighting.
-3.  **Unified Scene Building**: The `RenderFormerSceneBuilder` node acts as the central hub, intelligently assembling the final scene from all mesh, camera, and lighting inputs (both static and animated). It produces a `SCENE_SEQUENCE` ready for rendering.
-4.  **Rendering and Output**: The `PHRenderFormerVideoSampler` processes the scene sequence and outputs a batch of `IMAGES`. This single output can be used to both save individual frames with `SaveImage` and create a final movie with `CreateVideo`.
+1.  **Model Loading**: The process begins on the left with the `RenderFormer Model Loader`, which prepares the core AI model for rendering.
+2.  **Complex Asset Pipeline**:
+    *   **Multiple Mesh Inputs**: The scene is composed of multiple `LoadMesh` nodes. This allows you to import various objects, characters, and background elements independently.
+    *   **Processing Chains**: Some meshes go through additional processing steps. For example, a main object might be passed through `Remesh` to optimize its geometry or `RandomizeColors` to apply procedural materials. Other meshes might be loaded directly without modification.
+    *   **Combining Meshes**: All individual mesh pipelines converge into a `RenderFormerMeshCombine` node. This powerful utility merges all separate objects into a single, organized list that the renderer can understand.
+3.  **Static and Animated Components**:
+    *   **Camera**: A `RenderFormerCamera` defines the starting position and angle. This is then fed into a `PHRenderFormerCameraTarget` to create a smooth animation sequence from a start to an end state.
+    *   **Lighting**: Similarly, a `RenderFormerLighting` node sets the initial light properties, which are then animated over time by a `RenderFormerLightingTarget` node.
+4.  **Unified Scene Building**: The `RenderFormerSceneBuilder` acts as the central assembly point. It is designed to be highly flexible and accepts all the core scene components:
+    *   It takes the combined `MESH` list.
+    *   It takes the static `CAMERA` and `LIGHTING` to define the scene's state at frame zero.
+    *   It takes the `CAM_SEQUENCE` and `LIGHT_SEQUENCE` outputs from the target nodes to understand how the scene should evolve over time.
+    *   It intelligently processes these inputs to generate a complete `SCENE_SEQUENCE`, which is a frame-by-frame description of the entire animation.
+5.  **Rendering and Unified Output**:
+    *   The `PHRenderFormerVideoSampler` takes the `MODEL` and the `SCENE_SEQUENCE` and renders every frame of the animation.
+    *   Crucially, it outputs a single `IMAGES` batch. This batch can be used for multiple purposes simultaneously: you can save individual frames from the animation using a `Save Image` node, and also pass the entire batch to a `Create Video` node to produce the final movie file.
 
 ---
 
