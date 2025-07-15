@@ -130,7 +130,7 @@ For video, the workflow is similar. You would use a `RenderFormer Camera Target`
 
 ### 🚀 Advanced Usage: Building Complex Scenes & Animations
 
-The `ph_renderformer_advanced_01.json` workflow demonstrates a powerful setup that handles both **static image rendering** and **video animation** in parallel. It showcases how to compose a complex scene from multiple meshes, apply post-processing, and generate both a high-resolution still and an animated sequence from the same set of assets.
+The `ph_renderformer_advanced_01.json` workflow demonstrates a powerful setup that handles both **static image rendering** and **video animation** in parallel. It showcases how to compose a complex scene from multiple meshes and generate both a still and an animated sequence from the same set of assets.
 
 ```mermaid
 graph TD
@@ -138,95 +138,57 @@ graph TD
         ModelLoader["RenderFormerModelLoader"]
     end
 
-    subgraph "II. Inputs"
-        subgraph "A. Main Object"
-            Input3D["Load3D"] --> MainMesh["LoadMesh (Cabin)"]
-            MainMesh --> Remesh["RemeshMesh"] --> Randomize["RandomizeColors"]
+    subgraph "II. Scene Inputs & Composition"
+        subgraph "A. Asset Loading & Processing"
+            InputMeshes["LoadMesh (Multiple)"] --> Process["Remesh / Randomize / etc."]
         end
-
-        subgraph "B. Additional Objects"
-            MeshFox["LoadMesh (Fox)"]
-            MeshSphereGreen["LoadMesh (Sphere Green)"]
-            
-            subgraph "Sphere Group (Combined)"
-                MeshSphere1["LoadMesh (Sphere)"] --> SphereCombine["RenderFormerMeshCombine"]
-                MeshSphere2["LoadMesh (Sphere)"] --> SphereCombine
-                MeshSphere3["LoadMesh (Sphere)"] --> SphereCombine
-                MeshSphere4["LoadMesh (Sphere)"] --> SphereCombine
-            end
-
-            subgraph "Background Group (Combined)"
-                MeshWall0["LoadMesh (Wall 0)"] --> BGCombine["RenderFormerMeshCombine"]
-                MeshWall1["LoadMesh (Wall 1)"] --> BGCombine
-                MeshWall2["LoadMesh (Wall 2)"] --> BGCombine
-                MeshPlane["LoadMesh (Plane)"] --> BGCombine
-            end
+        
+        subgraph "B. Composition"
+            Process --> MeshCombine["RenderFormerMeshCombine"]
         end
 
         subgraph "C. Camera & Lighting"
-            Camera["RenderFormerCamera"] --> CameraAnim["PHRenderFormerCameraTarget"]
-            Light["RenderFormerLighting"] --> LightCombine["RenderFormerLightingCombine"]
+            Camera["RenderFormerCamera (Static)"]
+            CameraAnim["PHRenderFormerCameraTarget (Animated)"]
+            Lighting["RenderFormerLighting"]
         end
     end
 
-    subgraph "III. Scene Assembly"
-        subgraph "Combine All Meshes"
-            Randomize --> FinalMeshCombine["RenderFormerMeshCombine"]
-            MeshFox --> FinalMeshCombine
-            MeshSphereGreen --> FinalMeshCombine
-            SphereCombine --> FinalMeshCombine
-            BGCombine --> FinalMeshCombine
-        end
-        
-        subgraph "Build Image Scene (Static)"
-            FinalMeshCombine --> ImgSceneBuilder["RenderFormerSceneBuilder"]
+    subgraph "III. Parallel Scene Building"
+        subgraph "Static Image Path"
+            MeshCombine --> ImgSceneBuilder["RenderFormerSceneBuilder"]
             Camera --> ImgSceneBuilder
-            LightCombine --> ImgSceneBuilder
+            Lighting --> ImgSceneBuilder
         end
 
-        subgraph "Build Video Scene (Animated)"
-            FinalMeshCombine --> VidSceneBuilder["RenderFormerVideoSceneBuilder"]
-            CameraAnim -- CAMERA_SEQUENCE --> VidSceneBuilder
-            LightCombine --> VidSceneBuilder
+        subgraph "Animated Video Path"
+            MeshCombine --> VidSceneBuilder["RenderFormerVideoSceneBuilder"]
+            CameraAnim -- SEQUENCE --> VidSceneBuilder
+            Lighting --> VidSceneBuilder
         end
     end
 
-    subgraph "IV. Processing & Output"
-        subgraph "Image Rendering"
+    subgraph "IV. Rendering & Output"
+        subgraph "Image Output"
             ModelLoader --> ImgGenerator["RenderFormerGenerator"]
             ImgSceneBuilder --> ImgGenerator
             ImgGenerator --> SaveImg["SaveImage"]
         end
 
-        subgraph "Video Rendering"
+        subgraph "Video Output"
             ModelLoader --> VidSampler["PHRenderFormerVideoSampler"]
-            VidSceneBuilder -- SCENE_SEQUENCE --> VidSampler
-            VidSampler -- IMAGES --> CreateVid["CreateVideo"] --> SaveVid["SaveVideo"]
+            VidSceneBuilder -- SEQUENCE --> VidSampler
+            VidSampler --> CreateVid["CreateVideo"] --> SaveVid["SaveVideo"]
         end
     end
 
     style ModelLoader fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style Input3D fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
-    style MainMesh fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style Remesh fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style Randomize fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshFox fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshSphereGreen fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshSphere1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshSphere2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshSphere3 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshSphere4 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style SphereCombine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshWall0 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshWall1 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshWall2 fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style MeshPlane fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style BGCombine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style InputMeshes fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Process fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style MeshCombine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style Camera fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style CameraAnim fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style Light fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style LightCombine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
-    style FinalMeshCombine fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
+    style Lighting fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style ImgSceneBuilder fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style VidSceneBuilder fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
     style ImgGenerator fill:#FDC501,stroke:#111417,stroke-width:2px,color:#111417
@@ -236,16 +198,14 @@ graph TD
     style SaveVid fill:#a0a0a0,stroke:#111417,stroke-width:2px,color:#111417
 ```
 
-1.  **Load and Process Assets**:
-    *   The main object (a cabin) is loaded via the core `Load3D` node, then passed to a `LoadMesh` node. Its geometry is simplified with `RemeshMesh` and its colors are randomized with `RandomizeColors`.
-    *   Multiple other meshes (a fox, spheres, background walls) are loaded and grouped together using `RenderFormerMeshCombine` nodes.
-2.  **Combine All Meshes**: All processed and grouped meshes are merged into a final, single `MESH` output using another `RenderFormerMeshCombine` node. This master mesh list is the foundation for both the image and video outputs.
-3.  **Create Parallel Scenes**:
-    *   **For the Static Image**: The combined mesh, a static `RenderFormerCamera`, and the scene lighting are fed into a `RenderFormerSceneBuilder`.
-    *   **For the Video**: The same combined mesh and lighting are used, but this time they are paired with a `CAMERA_SEQUENCE` from a `PHRenderFormerCameraTarget` node. These are fed into a `RenderFormerVideoSceneBuilder`.
-4.  **Render and Save Both Outputs**:
-    *   The static scene is rendered by `RenderFormerGenerator` and saved with `SaveImage`.
-    *   The video scene sequence is rendered by `PHRenderFormerVideoSampler`, converted into a video file with `CreateVideo`, and finally saved with `SaveVideo`.
+The general flow can be simplified as follows:
+
+1.  **Asset Loading and Preparation**: Multiple meshes are loaded using `LoadMesh` nodes. Some may undergo further processing steps like remeshing or color randomization.
+2.  **Scene Composition**: All individual meshes are merged into a single, unified scene using one or more `RenderFormerMeshCombine` nodes.
+3.  **Parallel Pipelines**: The workflow splits into two distinct paths for maximum flexibility:
+    *   **Static Image**: The combined mesh is paired with a static `RenderFormerCamera` and sent to the `RenderFormerSceneBuilder`.
+    *   **Animated Video**: The same mesh is paired with an animated `CAMERA_SEQUENCE` (from a `PHRenderFormerCameraTarget` node) and sent to the `RenderFormerVideoSceneBuilder`.
+4.  **Rendering and Output**: Each pipeline is rendered independently. The static image path uses `RenderFormerGenerator` to produce a single image, while the video path uses `PHRenderFormerVideoSampler` to create an image batch, which is then encoded into a video file.
 
 ---
 
