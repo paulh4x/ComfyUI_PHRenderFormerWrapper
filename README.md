@@ -343,4 +343,4 @@ This project would not be possible without the foundational work of others.
 
 ### ⚖️ License
 
-<a href="https://github.com/paulh4x/ComfyUI_PHRenderFormerWrapper">ComfyUI_PHRenderFormerWrapper</a> © 2025 by <a href="https://www.linkedin.com/in/paul-hansen-410695b6/">Paul Hansen</a> is licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>
+-   <a href="https://github.com/paulh4x/ComfyUI_PHRenderFormerWrapper">ComfyUI_PHRenderFormerWrapper</a> © 2025 by <a href="https://www.linkedin.com/in/paul-hansen-410695b6/">Paul Hansen</a> is licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>
