@@ -58,11 +58,6 @@ This repository contains a set of custom nodes for ComfyUI that provide a wrappe
     ```bash
     pip install -r requirements.txt
     ```
-> [!IMPORTANT]
-> For owners of a **NVIDIA 50xx series GPU**, a dedicated requirements file is available. Please use the following command instead:
-> ```bash
-> pip install -r requirements_50xx.txt
-> ```
 6.  RenderFormer requires an additional plugin for handling HDR image formats. Run the following command to download it:
     ```bash
     python -c "import imageio; imageio.plugins.freeimage.download()"
