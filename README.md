@@ -128,7 +128,7 @@ For video, the workflow is similar. You would use a `RenderFormer Camera Target`
 The `ph_renderformer_advanced_01.json` workflow is a powerful example that demonstrates how to build a complex scene with multiple, independent objects and generate both a static image and an animated video from a single, unified pipeline.
 
 ```mermaid
-graph LR
+graph TD
     subgraph "I. Model"
         ModelLoader["RenderFormer Model Loader"]
     end
