@@ -1,4 +1,4 @@
-# ✨ ComfyUI-PHRenderFormerWrapper ✨
+# 🧊 ComfyUI-PHRenderFormerWrapper 🧊
 
 **Author:** paulh4x
 
@@ -7,7 +7,7 @@
 ![WIP Screenshot 3](assets/img/phrenderformer_wip_02.png)
 ![Resolution Comparison](assets/img/phrenderformer_wip_res_compare.jpg)
 
-This repository contains a set of custom nodes for ComfyUI that provide a wrapper for Microsoft's **RenderFormer** model. It allows you to render complex 3D scenes (see **Limits**) with physically-based materials and global illumination directly within the ComfyUI interface.
+This repository contains a set of custom nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) that provide a wrapper for Microsoft's **RenderFormer** model. It allows you to render complex 3D scenes (see **Limits**) with physically-based materials and global illumination directly within the ComfyUI interface.
 
 ---
 
