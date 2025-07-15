@@ -1,0 +1,15 @@
+[project]
+name = "comfyui_phrenderformer"
+description = "A Wrapper and a set of Custom Nodes for using RenderFormer as a 3d Environment in ComfyUI."
+version = "0.4.0"
+license = {file = "LICENSE"}
+dependencies = ["librosa", "numpy", "pillow>=10.3.0", "scipy", "color-matcher", "matplotlib", "huggingface_hub"]
+
+[project.urls]
+Repository = "https://github.com/paulh4x/ComfyUI_PHRenderFormer"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = "paulh4x"
+DisplayName = "ComfyUI_PHRenderFormer"
+Icon = "https://avatars.githubusercontent.com/u/40791699"

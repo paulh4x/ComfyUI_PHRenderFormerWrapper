@@ -1,4 +1,3 @@
-# Ignore the assets folder
+/.github/
 /assets/
 /renderformer/
-PLAN.md

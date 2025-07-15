@@ -571,7 +571,7 @@ class RenderFormerSceneBuilder:
                 "camera_sequence": ("CAMERA_SEQUENCE",),
                 "camera_sequence": ("CAMERA_SEQUENCE",),
                 "lighting_sequence": ("LIGHTING",),
-                "mesh_sequence": ("MESH_SEQUENCE",),
+                "mesh_sequence": ("MESH",),
                 "num_frames": ("INT", {"default": 1, "min": 1, "max": 1000}),
                 "add_default_background": ("BOOLEAN", {"default": False}),
             }
@@ -853,8 +853,8 @@ class RenderFormerMeshCombine:
             }
         }
 
-    RETURN_TYPES = ("MESH", "MESH_SEQUENCE",)
-    RETURN_NAMES = ("MESH", "MESH_SEQUENCE",)
+    RETURN_TYPES = ("MESH", "MESH",)
+    RETURN_NAMES = ("MESH", "MESH_ANIMATED",)
     FUNCTION = "combine_meshes"
     CATEGORY = "PHRenderFormer"
 
@@ -869,7 +869,7 @@ class RenderFormerMeshCombine:
             if not mesh_input:
                 continue
 
-            # Case 1: Input is an animated MESH_SEQUENCE
+            # Case 1: Input is an animated MESH object (previously MESH_SEQUENCE)
             if isinstance(mesh_input, dict) and "start_meshes" in mesh_input and "end_meshes" in mesh_input:
                 start_data = mesh_input["start_meshes"]
                 end_data = mesh_input["end_meshes"]
@@ -935,7 +935,7 @@ class RenderFormerMeshTarget:
             }
         }
 
-    RETURN_TYPES = ("MESH_SEQUENCE",)
+    RETURN_TYPES = ("MESH",)
     FUNCTION = "get_mesh_sequence"
     CATEGORY = "PHRenderFormer"
 
