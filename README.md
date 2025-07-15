@@ -135,18 +135,15 @@ graph LR
 
     subgraph "II. Scene Inputs"
         subgraph "A. Meshes"
-            direction LR
             Mesh1["LoadMesh (Processed)"] --> Remesh["Remesh / Randomize"] --> Combine["RenderFormerMeshCombine"]
             Mesh2["LoadMesh (Direct)"] --> Combine
         end
         
         subgraph "B. Camera"
-            direction TD
             CamStart["RenderFormerCamera (Start)"] --> CamEnd["PHRenderFormerCameraTarget (End)"]
         end
 
         subgraph "C. Lighting"
-            direction TD
             LightStart["RenderFormerLighting (Start)"] --> LightEnd["RenderFormerLightingTarget (End)"]
         end
     end
