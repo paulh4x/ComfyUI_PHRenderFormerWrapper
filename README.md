@@ -368,12 +368,15 @@ This project would not be possible without the foundational work of others.
     -   [Official RenderFormer GitHub](https://github.com/microsoft/renderformer)
 
 -   **comfyui-hunyuan3dwrapper**
-    Special thanks to **kijai** for their work on the `comfyui-hunyan3dwrapper`, which served as an invaluable reference and starting point for this project during its development in `vibecoding`.
+    Special thanks to **kijai** for his work on the `comfyui-hunyan3dwrapper`, which served as an invaluable reference and starting point for this project during its development in `vibecoding`.
     -   [ComfyUI-Hunyuan3DWrapper GitHub](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper)
 
 -   **ComfyUI_Fill-Example-Nodes**
     A huge thank you to **filliptm** for creating the `ComfyUI_Fill-Example-Nodes` repository. The advanced color picker in this project was implemented by adapting the excellent example code provided in that repo. It was an essential learning resource for understanding how to build custom UI elements in ComfyUI.
     -   [ComfyUI_Fill-Example-Nodes GitHub](https://github.com/filliptm/ComfyUI_Fill-Example-Nodes)
+
+-   **Awesome people from the Internet**
+    Special thanks to m4d, rem431, Mel and hicho for pointing me directions, providing tips and feedback.
 
 ---
 
