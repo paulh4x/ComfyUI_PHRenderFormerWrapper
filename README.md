@@ -242,7 +242,7 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 
 ### 🧱 Model Limits
 
--   **Meshes:** RenderFormer can handle scenes of up to 8192 polygons.
+-   **Meshes:** RenderFormer can handle meshes of up to 8192 polygons.
 -   **Lights:** Up to 8 lightsources can be combined for lighting, emission color is for now limited to rgb 255, 255, 255 (white).
 -   **Resolution:** Best tested resolutions for now are between 512 x 512 to 1024 x 1024 pixels. The model can produce resolutions up to 2048 x 2048 pixel, quality of outputs decrease with higher resolutions (see comparison img).
 -   **Animations:** Due to slightly varying precision in each frame rendered, camera animations for now contain some flickering, especially with high reflective materials.
@@ -354,6 +354,8 @@ This project is under active development. Here is a summary of the progress so f
 
 This project represents my first steps into coding and open-source contribution. It was born out of a desire to learn and create. What started as a simple experiment has been a journey of discovery, and I'm excited to see where it goes. I would love to develop this project further with the help of the community and welcome any contributions or feedback.
 
+---
+
 ### 🙏 Acknowledgements
 
 This project would not be possible without the foundational work of others.
@@ -370,6 +372,8 @@ This project would not be possible without the foundational work of others.
 -   **ComfyUI_Fill-Example-Nodes**
     A huge thank you to **filliptm** for creating the `ComfyUI_Fill-Example-Nodes` repository. The advanced color picker in this project was implemented by adapting the excellent example code provided in that repo. It was an essential learning resource for understanding how to build custom UI elements in ComfyUI.
     -   [ComfyUI_Fill-Example-Nodes GitHub](https://github.com/filliptm/ComfyUI_Fill-Example-Nodes)
+
+---
 
 ### ⚖️ License
 
