@@ -247,6 +247,8 @@ This wrapper provides a comprehensive set of nodes to build 3D scenes.
 -   **Resolution:** Best tested resolutions for now are between 512 x 512 to 1024 x 1024 pixels. The model can produce resolutions up to 2048 x 2048 pixel, quality of outputs decrease with higher resolutions (see comparison img).
 -   **Animations:** Due to slightly varying precision in each frame rendered, camera animations for now contain some flickering, especially with high reflective materials.
 
+---
+
 ### 📝 Progress & To-Do
 
 This project is under active development. Here is a summary of the progress so far and the features planned for the future.
