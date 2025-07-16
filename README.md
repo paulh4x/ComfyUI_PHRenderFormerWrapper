@@ -340,6 +340,16 @@ This project is under active development. Here is a summary of the progress so f
 
 ---
 
+### 💖 Contact
+
+* 🌐 **Web**:		[https://www.paulhansen.de](https://www.paulhansen.de)
+* 📸 **Instagram**:	[https://www.instagram.com/paulhansen.design/](https://www.instagram.com/paulhansen.design/)
+* 🎥 **YouTube**:	[https://www.youtube.com/@Paul_Hansen](https://www.youtube.com/@Paul_Hansen)
+* 💼 **LinkedIn**:	[https://www.linkedin.com/in/paul-hansen-410695b6/](https://www.linkedin.com/in/paul-hansen-410695b6/)
+* 💬 **Discord**:	[https://discord.gg/QarZjskQmM](https://discord.gg/QarZjskQmM)
+
+---
+
 ### 🌱 My Journey
 
 This project represents my first steps into coding and open-source contribution. It was born out of a desire to learn and create. What started as a simple experiment has been a journey of discovery, and I'm excited to see where it goes. I would love to develop this project further with the help of the community and welcome any contributions or feedback.
