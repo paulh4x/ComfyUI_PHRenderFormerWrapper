@@ -772,9 +772,19 @@ class RenderFormerSceneBuilder:
             with io.BytesIO() as h5_buffer:
                 temp_mesh_dir_name = "temp_mesh_dir"
                 # The scene_config_dir is now the root of our temp directory
-                generate_scene_mesh(scene_config, f"{temp_mesh_dir_name}/scene.obj", str(tmpdir_path))
+# Ensure the split directory exists
+                split_dir = tmpdir_path / temp_mesh_dir_name / 'split'
+                split_dir.mkdir(parents=True, exist_ok=True)
+                # The scene_config_dir is now the root of our temp directory
+                scene_obj_path = tmpdir_path / temp_mesh_dir_name / "scene.obj"
+                generate_scene_mesh(scene_config, str(scene_obj_path), str(tmpdir_path))
                 
                 split_mesh_path_prefix = tmpdir_path / temp_mesh_dir_name / 'split'
+# Debug information
+                if split_mesh_path_prefix.exists():
+                    print(f"Split directory contents: {list(split_mesh_path_prefix.iterdir())}")
+                else:
+                    print(f"Split directory does not exist: {split_mesh_path_prefix}")
                 
                 all_triangles, all_vn, all_texture = [], [], []
                 size = 32
@@ -786,6 +796,10 @@ class RenderFormerSceneBuilder:
                     # The obj_config.mesh_path is now an absolute path, so generate_scene_mesh will have used that.
                     # The split files are named after the object key, not the original filename.
                     mesh_file_path = split_mesh_path_prefix / f'{obj_key}.obj'
+# Check if the split mesh file exists before trying to load it
+                    if not mesh_file_path.exists():
+                        raise FileNotFoundError(f"Split mesh file not found: {mesh_file_path}. "
+                                               f"Temp directory contents: {list(split_mesh_path_prefix.parent.iterdir()) if split_mesh_path_prefix.parent.exists() else 'Parent dir does not exist'}")
                     mesh = trimesh.load(str(mesh_file_path), process=False, force='mesh')
                     triangles, vn = mesh.triangles, mesh.vertex_normals[mesh.faces]
                     material_config = obj_config.material

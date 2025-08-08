@@ -1,3 +1,4 @@
-/.github/
-/assets/
-/renderformer/
+*__pycache__/
+assets/
+renderformer/
+*PLAN.md
